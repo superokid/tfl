@@ -54,7 +54,8 @@ Bun is the package manager: commit `bun.lock`, never `package-lock.json`.
 - `bun run lint`
 - `bun run build`, then `bun run size`: bundle budget check
 - `bun run smoke <url>`: schema check against a live deployment
-- `bun run deploy`: build and deploy (only with the user's go-ahead)
+- `bun run deploy`: build and deploy. Deploys are manual, from a green `main`, and only with the user's
+  go-ahead; CI never deploys. Run `bun run smoke <url>` afterwards.
 
 ## Layout
 - `src/worker/`: Worker (API). `src/client/`: React app. `src/shared/`: types and pure code used by both.

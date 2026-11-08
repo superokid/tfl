@@ -25,3 +25,14 @@ bun run typecheck && bun run lint && bun run test && bun run build && bun run si
 ```
 
 CI runs these on every push, plus a gitleaks secret scan.
+
+## Deploy
+
+Deploys are manual: CI never deploys and holds no Cloudflare credentials.
+
+```bash
+bunx wrangler login                      # once
+bunx wrangler secret put TFL_APP_KEY     # once; prompts for the key
+bun run deploy                           # from a green main
+bun run smoke https://<worker>.workers.dev
+```

@@ -22,3 +22,7 @@ Sample of prompts used (Claude Code), with corrections.
   CI now uses `oven-sh/setup-bun`, and `bun.lock` is committed.
 - Found while building: TypeScript 7 isn't supported by typescript-eslint yet, so TypeScript is pinned to 6.
   `secrets.required` in `wrangler.jsonc` keeps generated types the same with or without `.dev.vars`.
+- "Just make the deployment from cloudflare manually. not from CI": removed the CI deploy job, so CI holds no
+  Cloudflare credentials. Deploy is `bun run deploy` from a green `main`, followed by a manual smoke test.
+- The first CI run caught a gitleaks false positive on the test's fake key. Fixed by making the value
+  low-entropy instead of disabling the rule.

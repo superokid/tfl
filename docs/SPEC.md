@@ -183,8 +183,10 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
   - invalid bus route
 - **Secrets:** a refresh with a dummy key; the key appears in no body, header, log or error.
 - **CI on every push and PR:** typecheck, lint, test, build + size, gitleaks.
-- **Deploy** from `main` after green (`CLOUDFLARE_API_TOKEN` secret).
-- **Live smoke test** every 6 h and after each deploy: schema check of `/api/health` and `/api/status`.
+- **Deploy** manually from a green `main`: `bun run deploy`, then `bun run smoke <url>`. CI never deploys
+  and holds no Cloudflare credentials.
+- **Live smoke test** every 6 h in CI, and by hand after each deploy: schema check of `/api/health` and
+  `/api/status`.
 
 ## 8. Secrets and history
 
@@ -196,7 +198,7 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 
 | # | Phase | Done when |
 |---|---|---|
-| 0 | Foundations | CI and deploy working, `/api/health` live, prompt log started |
+| 0 | Foundations | CI green, manual deploy working, `/api/health` live, prompt log started |
 | 1 | API investigation | Fixtures and notes. Spikes: horizon per mode, severity list, timetable CPU (Northern, District), overnight status, ghost trains, key in a header |
 | 2 | Rules engine | Test-first, every §7 rule case, config only |
 | 3 | Reference data | Lines, stations, gaps, hours in D1; cron; fallbacks logged |

@@ -17,6 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "size": "bun scripts/check-size.ts",
+    "reference": "bun scripts/build-reference.ts",
+    "fixtures": "bun scripts/capture-fixtures.ts",
     "smoke": "bun scripts/smoke.ts"
   },
   "dependencies": {

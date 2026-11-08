@@ -42,3 +42,10 @@ Sample of prompts used (Claude Code), with corrections.
     direction.
   - `/Line/Meta/Severity` had 3 rail descriptions the spec table missed; a fixture test now fails on any
     unmapped one.
+
+## 2026-11-08: Phase 3, reference data
+- Measured before building: ~84 timetables of 300–500 KB don't fit a 10 ms / 50-subrequest cron. Changed
+  ADR-005 to ADR-007: the script generates a committed JSON file from the same API.
+- First generated output was checked by eye and corrected: District picked a shuttle-branch station
+  (now weighted by route length); Cable Car had no predictions (override with reason). TfL has no
+  timetables for the Elizabeth line or Overground; recorded as a known limit, not worked around.

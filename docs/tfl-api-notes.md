@@ -39,6 +39,8 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
   e.g. Victoria Friday until 26:57).
 - Several routes when branches pass the stop (Northern at Euston: 2).
 - 318–506 KB, parse 1.2–1.5 ms. Some stop/direction pairs 404 (District at Earl's Court, outbound).
+- **Elizabeth line and all Overground lines: 404.** Without `?direction=` it returns a disambiguation whose
+  own links 404.
 
 **Bus** `/Line/Mode/bus` ≈ 348 KB.
 

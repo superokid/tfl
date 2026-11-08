@@ -55,6 +55,8 @@ Bun is the package manager: commit `bun.lock`, never `package-lock.json`.
 - `bun run lint`
 - `bun run build`, then `bun run size`: bundle budget check
 - `bun run smoke <url>`: schema check against a live deployment
+- `bun run reference`: regenerate `src/shared/reference/rail.json` from the live API (ADR-007)
+- `bun run fixtures`: re-capture trimmed live fixtures into `test/fixtures/`
 - `bun run deploy`: build and deploy. Deploys are manual, from a green `main`, and only with the user's
   go-ahead; CI never deploys. Run `bun run smoke <url>` afterwards.
 

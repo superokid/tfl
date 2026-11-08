@@ -1,5 +1,7 @@
 # ADR-005: Reference data from the TfL API, not hardcoded
 
+> Storage and refresh superseded by [ADR-007](007-generated-reference-data.md) (Phase 1 measurements).
+
 ## Context
 The rules need lines, check stations, normal gaps and operating hours. Hardcoding goes stale silently
 (e.g. the 2024 Overground split).

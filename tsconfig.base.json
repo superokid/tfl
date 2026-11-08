@@ -12,6 +12,7 @@
     "exactOptionalPropertyTypes": false,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true
   }

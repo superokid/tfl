@@ -88,14 +88,17 @@ export function SaveButton({ item, saved, onToggle }: { item: SavedItem; saved: 
   );
 }
 
-export function PageHead({ colour, title, children }: { colour?: string; title: string; children?: ReactNode }) {
+export function PageHead({ colour, title, sub, children }: { colour?: string; title: string; sub?: ReactNode; children?: ReactNode }) {
   return (
     <div className="page-head" style={colour ? { borderLeftColor: colour } : undefined}>
       <a href="#" className="back">
         ← Home
       </a>
       <div className="page-title">
-        <h2>{title}</h2>
+        <div className="page-name">
+          <h2>{title}</h2>
+          {sub && <p className="page-sub">{sub}</p>}
+        </div>
         {children}
       </div>
     </div>

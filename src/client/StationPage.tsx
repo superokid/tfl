@@ -6,6 +6,7 @@ import { href, useLive, useServerNow } from './live';
 import type { useSaved } from './saved';
 import { Board } from './LinePage';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
+import { stopDetail } from './view';
 
 /** The home screen's last statuses, from this device: shows each line's status here for free. */
 function savedLines(): LinesBody | null {
@@ -29,8 +30,26 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
 
   return (
     <main className="detail">
-      <PageHead title={data?.name ?? (isBusStop ? 'Bus stop' : 'Station')}>
-        {data && <SaveButton item={{ route, name: data.name, detail: isBusStop ? 'Bus stop' : undefined }} saved={saved.isSaved(route)} onToggle={saved.toggle} />}
+      <PageHead
+        title={data?.name ?? (isBusStop ? 'Bus stop' : 'Station')}
+        sub={
+          isBusStop &&
+          data &&
+          (data.letter || data.towards) && (
+            <>
+              {data.letter && <span className="stop-flag">{data.letter}</span>}
+              {data.towards ? `towards ${data.towards}` : `Stop ${data.letter}`}
+            </>
+          )
+        }
+      >
+        {data && (
+          <SaveButton
+            item={{ route, name: data.name, detail: isBusStop ? stopDetail(data.letter, data.towards) : undefined }}
+            saved={saved.isSaved(route)}
+            onToggle={saved.toggle}
+          />
+        )}
       </PageHead>
       <Updated age={age} stale={!!data?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />

@@ -79,6 +79,11 @@ export function rowReason(line: Pick<LineStatus, 'severity' | 'messages'>): stri
   return line.severity !== 'NORMAL' && line.messages[0] ? line.messages[0] : null;
 }
 
+/** "Stop RC · towards Marble Arch": how passengers tell same-named bus stops apart. */
+export function stopDetail(letter: string | null | undefined, towards: string | null | undefined): string {
+  return [letter && `Stop ${letter}`, towards && `towards ${towards}`].filter(Boolean).join(' · ') || 'Bus stop';
+}
+
 // ── Live check (our comparison), in plain words ────────────────────────────────────────────────────
 
 export interface CheckNote {

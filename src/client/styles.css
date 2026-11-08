@@ -182,6 +182,8 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .back { color: var(--accent); text-decoration: none; padding: 0.3rem 0; min-height: 2.5rem; display: inline-flex; align-items: center; justify-self: start; }
 .page-title { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
 .page-title h2 { font-size: 1.4rem; }
+.page-name { display: grid; gap: 0.3rem; min-width: 0; }
+.page-sub { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.92rem; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.9rem 1rem; display: grid; gap: 0.4rem; }
 .tfl-message { background: var(--neutral-bg); border-radius: 0.6rem; padding: 0.6rem 0.75rem; font-size: 0.92rem; }
 .check-title { font-weight: 700; font-size: 1.05rem; }

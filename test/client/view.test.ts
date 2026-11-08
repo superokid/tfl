@@ -12,6 +12,7 @@ import {
   searchRoutes,
   sortLines,
   statusTone,
+  stopDetail,
   tabOf,
   tabSummary,
 } from '../../src/client/view';
@@ -95,6 +96,13 @@ describe('context lines', () => {
     expect(rowReason({ severity: null, messages: ['Odd status.'] })).toBe('Odd status.');
     expect(rowReason({ severity: 'NORMAL', messages: ['Lifts out of order at Bank.'] })).toBeNull();
     expect(rowReason({ severity: 'PARTIAL', messages: [] })).toBeNull();
+  });
+
+  it('a bus stop is told apart by its flag letter and direction', () => {
+    expect(stopDetail('RC', 'Marble Arch')).toBe('Stop RC · towards Marble Arch');
+    expect(stopDetail(null, 'Marble Arch')).toBe('towards Marble Arch');
+    expect(stopDetail('RC', null)).toBe('Stop RC');
+    expect(stopDetail(undefined, undefined)).toBe('Bus stop');
   });
 });
 

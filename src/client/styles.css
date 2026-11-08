@@ -221,7 +221,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 }
 .bus-row .route-badge { grid-area: badge; }
 .bus-dest { grid-area: dest; font-weight: 500; }
-.bus-times { grid-area: times; display: flex; gap: 0.75rem; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.bus-times { grid-area: times; display: flex; gap: 0.1rem 0.6rem; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
 
 .evidence summary { cursor: pointer; color: var(--muted); min-height: 2.5rem; display: flex; align-items: center; }
 .evidence-list { margin: 0.25rem 0; padding-left: 1.1rem; font-size: 0.88rem; }

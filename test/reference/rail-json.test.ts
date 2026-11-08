@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { expandDirection, RAIL_REFERENCE } from '../../src/shared/reference/load';
+import { expandDirection, RAIL_REFERENCE, STATIONS } from '../../src/shared/reference/load';
 import { OVERRIDES } from '../../src/shared/reference/overrides';
 
 describe('generated rail reference (src/shared/reference/rail.json)', () => {
@@ -50,5 +50,17 @@ describe('generated rail reference (src/shared/reference/rail.json)', () => {
 
   it('contains no key', () => {
     expect(readFileSync('src/shared/reference/rail.json', 'utf8')).not.toMatch(/app_key/);
+  });
+});
+
+describe('generated station index (src/shared/reference/stations.json)', () => {
+  it('every station has coordinates in or near London, for "Lines near me"', () => {
+    expect(STATIONS.stations.length).toBeGreaterThan(400);
+    for (const s of STATIONS.stations) {
+      expect(s.lat, s.id).toBeGreaterThan(51.2);
+      expect(s.lat, s.id).toBeLessThan(51.8);
+      expect(s.lon, s.id).toBeGreaterThan(-1.1);
+      expect(s.lon, s.id).toBeLessThan(0.5);
+    }
   });
 });

@@ -203,11 +203,17 @@ export interface StationEntry {
   /** Stop ids to ask for arrivals (one per mode at a hub). */
   stopIds: string[];
   lines: string[];
+  /** Where it is, to 4 places (~10 m): the middle of a hub's stops. Missing only if TfL gave no position. */
+  lat?: number;
+  lon?: number;
 }
+
+const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const round4 = (x: number) => Math.round(x * 1e4) / 1e4;
 
 /** Route sequences (any lines, any direction) → one search entry per station, hubs merged. */
 export function collectStations(sequences: unknown[]): StationEntry[] {
-  const byKey = new Map<string, { names: Set<string>; stopIds: Set<string>; lines: Set<string> }>();
+  const byKey = new Map<string, { names: Set<string>; stopIds: Set<string>; lines: Set<string>; at: Map<string, [number, number]> }>();
   for (const seq of sequences) {
     if (!isObj(seq)) continue;
     const lineId = str(seq.lineId);
@@ -219,20 +225,28 @@ export function collectStations(sequences: unknown[]): StationEntry[] {
         const name = str(p.name);
         if (!id || !name) continue;
         const key = str(p.topMostParentId) ?? id;
-        const e = byKey.get(key) ?? { names: new Set(), stopIds: new Set(), lines: new Set() };
+        const e = byKey.get(key) ?? { names: new Set(), stopIds: new Set(), lines: new Set(), at: new Map() };
         e.names.add(cleanStationName(name));
         e.stopIds.add(id);
+        const lat = num(p.lat);
+        const lon = num(p.lon);
+        if (lat !== null && lon !== null) e.at.set(id, [lat, lon]);
         if (lineId) e.lines.add(lineId);
         byKey.set(key, e);
       }
     }
   }
   return [...byKey]
-    .map(([id, e]) => ({
-      id,
-      name: [...e.names].sort((a, b) => a.length - b.length || a.localeCompare(b))[0]!,
-      stopIds: [...e.stopIds].sort(),
-      lines: [...e.lines].sort(),
-    }))
+    .map(([id, e]): StationEntry => {
+      const at = [...e.at.values()];
+      const mean = (i: 0 | 1) => round4(at.reduce((sum, p) => sum + p[i], 0) / at.length);
+      return {
+        id,
+        name: [...e.names].sort((a, b) => a.length - b.length || a.localeCompare(b))[0]!,
+        stopIds: [...e.stopIds].sort(),
+        lines: [...e.lines].sort(),
+        ...(at.length > 0 ? { lat: mean(0), lon: mean(1) } : {}),
+      };
+    })
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }

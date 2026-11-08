@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   boundWord,
   cleanStationName,
+  collectStations,
   directionFromTimetable,
   learnBoundDirections,
   pickCheckStations,
@@ -102,5 +103,36 @@ describe('platform directions', () => {
     expect(cleanStationName('Oxford Circus Underground Station')).toBe('Oxford Circus');
     expect(cleanStationName('Bond Street (Elizabeth line)')).toBe('Bond Street');
     expect(cleanStationName('Wimbledon Tram Stop')).toBe('Wimbledon');
+  });
+});
+
+describe('collectStations', () => {
+  const stop = (id: string, name: string, parent: string, at?: [number, number]) => ({
+    id,
+    name,
+    topMostParentId: parent,
+    ...(at ? { lat: at[0], lon: at[1] } : {}),
+  });
+  const seq = (lineId: string, stops: unknown[]) => ({ lineId, stopPointSequences: [{ stopPoint: stops }] });
+
+  it('keeps coordinates; a hub sits at the middle of its stops, to 4 places', () => {
+    const [stratford, bank] = collectStations([
+      seq('central', [stop('940GZZLUSTD', 'Stratford Underground Station', 'HUBSRA', [51.54154, -0.00366])]),
+      seq('elizabeth', [stop('910GSTFD', 'Stratford (London) Rail Station', 'HUBSRA', [51.541895, -0.003397])]),
+      seq('central', [stop('940GZZLUBNK', 'Bank Underground Station', '940GZZLUBNK', [51.513356, -0.088899])]),
+    ]).sort((a, b) => b.name.localeCompare(a.name));
+    expect(stratford).toMatchObject({ id: 'HUBSRA', lat: 51.5417, lon: -0.0035, lines: ['central', 'elizabeth'] });
+    expect(bank).toMatchObject({ id: '940GZZLUBNK', lat: 51.5134, lon: -0.0889 });
+  });
+
+  it('a stop with no usable coordinates is left out of the average; none at all gives none', () => {
+    const [a, b] = collectStations([
+      seq('dlr', [stop('A', 'Alpha DLR Station', 'HUBA', [51.5, 0.1]), { ...stop('A2', 'Alpha', 'HUBA'), lat: 'x', lon: 0 }]),
+      seq('dlr', [stop('B', 'Beta DLR Station', 'B')]),
+    ]);
+    expect(a).toMatchObject({ id: 'HUBA', lat: 51.5, lon: 0.1 });
+    expect(b!.id).toBe('B');
+    expect(b).not.toHaveProperty('lat');
+    expect(b).not.toHaveProperty('lon');
   });
 });

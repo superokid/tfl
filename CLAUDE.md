@@ -62,6 +62,9 @@ Bun is the package manager: commit `bun.lock`, never `package-lock.json`.
 
 ## Layout
 - `src/worker/`: Worker (API). `src/client/`: React app. `src/shared/`: types and pure code used by both.
+  Client folders, each importing only from those below it: `pages/` (one per route) → `features/` (search,
+  buses, boards) → `components/` (shared UI, skeletons) → `hooks/` (live data, route, saved, location) →
+  `lib/` (pure display logic, no React or DOM). `app/` holds the shell and CSS; `main.tsx` is the entry.
   Client code never imports from `src/worker/`.
 - `test/`: Vitest tests. `scripts/`: TypeScript scripts run with Bun.
 

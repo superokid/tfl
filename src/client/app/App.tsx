@@ -1,11 +1,12 @@
-import { BusRoutePage } from './BusRoutePage';
-import { Home } from './Home';
-import { LinePage } from './LinePage';
-import { useIdle, useRoute } from './live';
-import { useSaved } from './saved';
-import { Search } from './Search';
-import { StationPage } from './StationPage';
-import { Boundary } from './ui';
+import { BusRoutePage } from '../pages/BusRoutePage';
+import { Home } from '../pages/Home';
+import { LinePage } from '../pages/LinePage';
+import { useIdle } from '../hooks/live';
+import { useRoute } from '../hooks/route';
+import { useSaved } from '../hooks/saved';
+import { Search } from '../features/search/Search';
+import { StationPage } from '../pages/StationPage';
+import { Boundary } from '../components/ui';
 
 /**
  * Passenger-first layout: one search box (stations, bus stops, routes), saved favourites, and per-mode

@@ -1,10 +1,10 @@
 /** Small shared pieces used by every page. */
 import { Component, Fragment, type ReactNode, useEffect } from 'react';
 import { Bone } from './Skeletons';
-import type { SavedItem } from './saved';
-import { formatAge, statusTone, type Tone } from './view';
-import type { Expected } from '../shared/rules/types';
-import { prettyStatus } from './view';
+import type { SavedItem } from '../hooks/saved';
+import { formatAge, statusTone, type Tone } from '../lib/view';
+import type { Expected } from '../../shared/rules/types';
+import { prettyStatus } from '../lib/view';
 
 export function Updated({
   age,

@@ -19,7 +19,7 @@ import {
   stopDetail,
   tabOf,
   tabSummary,
-} from '../../src/client/view';
+} from '../../src/client/lib/view';
 import type { DirectionEvidence } from '../../src/shared/rules/types';
 
 const ev = (over: Partial<DirectionEvidence>): DirectionEvidence => ({

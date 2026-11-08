@@ -1,5 +1,5 @@
-import type { DirectionBoard } from '../shared/boards';
-import { formatDue } from './view';
+import type { DirectionBoard } from '../../../shared/boards';
+import { formatDue } from '../../lib/view';
 
 /** Services not yet gone (up to 30 s after their time). */
 export const upcoming = (d: DirectionBoard, now: number) => d.arrivals.filter((a) => a.at > now - 30_000);

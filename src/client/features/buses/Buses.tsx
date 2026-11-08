@@ -1,11 +1,12 @@
-import { type BusTimes, isNearbyBody, type NearbyStop } from '../shared/api';
-import { DISPLAY, NEARBY } from '../shared/config';
-import { href, useLive, useServerNow } from './live';
-import type { SavedItem } from './saved';
-import { NearStopsSkeleton } from './Skeletons';
-import { Updated } from './ui';
-import { formatDue } from './view';
-import { useWhere, type Where } from './where';
+import { type BusTimes, isNearbyBody, type NearbyStop } from '../../../shared/api';
+import { DISPLAY, NEARBY } from '../../../shared/config';
+import { useLive, useServerNow } from '../../hooks/live';
+import { href } from '../../hooks/route';
+import type { SavedItem } from '../../hooks/saved';
+import { NearStopsSkeleton } from '../../components/Skeletons';
+import { Updated } from '../../components/ui';
+import { formatDue } from '../../lib/view';
+import { useWhere, type Where } from '../../hooks/where';
 
 /** "38 · to Victoria · 2 min, 9 min, 14 min": one route and destination at a stop. */
 export function BusTimesRow({ row, now }: { row: BusTimes; now: number }) {

@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { type BusSearchBody, type IndexBody, isBusSearchBody, isIndexBody } from '../shared/api';
-import { lineColour } from './lineColours';
-import { href } from './live';
-import { searchByName, searchRoutes } from './view';
+import { type BusSearchBody, type IndexBody, isBusSearchBody, isIndexBody } from '../../../shared/api';
+import { lineColour } from '../../lib/lineColours';
+import { href } from '../../hooks/route';
+import { searchByName, searchRoutes } from '../../lib/view';
 
 /** The search index (stations + bus routes), fetched once per session; the browser caches it a day. */
 let indexPromise: Promise<IndexBody | null> | null = null;

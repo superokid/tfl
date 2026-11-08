@@ -1,8 +1,8 @@
 /** Pure display logic (unit-tested; components stay thin). Plain words for passengers, no internal jargon. */
-import type { LineStatus } from '../shared/api';
-import type { Mode } from '../shared/config';
-import { mapStatus } from '../shared/rules/status';
-import type { DirectionEvidence, Expected, VerdictKind, VerdictReason } from '../shared/rules/types';
+import type { LineStatus } from '../../shared/api';
+import type { Mode } from '../../shared/config';
+import { mapStatus } from '../../shared/rules/status';
+import type { DirectionEvidence, Expected, VerdictKind, VerdictReason } from '../../shared/rules/types';
 
 // ── Modes ───────────────────────────────────────────────────────────────────────────────────────────
 

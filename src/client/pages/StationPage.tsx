@@ -1,13 +1,14 @@
-import { isLinesBody, isStationBody, type LinesBody } from '../shared/api';
-import { busRows } from '../shared/boards';
-import { BusTimesRow } from './Buses';
-import { lineColour } from './lineColours';
-import { href, useLive, useServerNow } from './live';
-import type { useSaved } from './saved';
-import { Board } from './LinePage';
-import { BoardsSkeleton, BusRowsSkeleton } from './Skeletons';
-import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
-import { stopDetail } from './view';
+import { isLinesBody, isStationBody, type LinesBody } from '../../shared/api';
+import { busRows } from '../../shared/boards';
+import { BusTimesRow } from '../features/buses/Buses';
+import { lineColour } from '../lib/lineColours';
+import { useLive, useServerNow } from '../hooks/live';
+import { href } from '../hooks/route';
+import type { useSaved } from '../hooks/saved';
+import { Board } from '../features/boards/Board';
+import { BoardsSkeleton, BusRowsSkeleton } from '../components/Skeletons';
+import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
+import { stopDetail } from '../lib/view';
 
 /** The home screen's last statuses, from this device: shows each line's status here for free. */
 function savedLines(): LinesBody | null {

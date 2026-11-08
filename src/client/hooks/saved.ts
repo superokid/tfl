@@ -1,6 +1,6 @@
 /** Saved lines, stations, bus stops and routes: one tap from the home screen. Kept on this device only. */
 import { useCallback, useState } from 'react';
-import type { Route } from './live';
+import type { Route } from './route';
 
 export interface SavedItem {
   route: Exclude<Route, { page: 'home' }>;

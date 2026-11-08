@@ -4,36 +4,10 @@
  * visible, and stops after 10 min without interaction.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type LoadFailure, loadErrorText } from './view';
+import { type LoadFailure, loadErrorText } from '../lib/view';
 
 export const REFRESH_MS = 60_000;
 export const IDLE_MS = 10 * 60_000;
-
-export type Route =
-  | { page: 'home' }
-  | { page: 'line'; id: string }
-  | { page: 'station'; id: string }
-  | { page: 'bus'; id: string };
-
-export function parseRoute(hash: string): Route {
-  const m = /^#(line|station|bus)\/([A-Za-z0-9-]{1,30})$/.exec(hash);
-  return m ? ({ page: m[1], id: m[2] } as Route) : { page: 'home' };
-}
-
-export const href = (r: Route) => (r.page === 'home' ? '#' : `#${r.page}/${r.id}`);
-
-export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(() => parseRoute(location.hash));
-  useEffect(() => {
-    const onHash = () => {
-      setRoute(parseRoute(location.hash));
-      window.scrollTo(0, 0);
-    };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
-  }, []);
-  return route;
-}
 
 /** True after 10 min without the user touching the page; any interaction or tab focus clears it. */
 export function useIdle(): boolean {

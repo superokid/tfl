@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NEARBY } from '../shared/config';
+import { NEARBY } from '../../shared/config';
 
 /** Where the passenger is, rounded to a ~100 m cell on the phone. */
 export type Where = { state: 'off' | 'locating' | 'denied' | 'failed' | 'outside' } | { state: 'at'; lat: string; lon: string };

@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { NEAR_LINES } from '../shared/config';
-import { isLinesBody, type LineStatus } from '../shared/api';
-import type { VerdictKind } from '../shared/rules/types';
-import { lineColour } from './lineColours';
-import { href, useLive, useServerNow } from './live';
-import type { SavedItem } from './saved';
-import { BusTab } from './Buses';
-import { useIndex } from './Search';
-import { LinesSkeleton } from './Skeletons';
-import { LoadError, StaleBanner, StatusText, Updated, useTitle } from './ui';
-import { formatDistance, rowNote, rowReason, sortLines, stationsNear, TABS, tabOf, tabSummary, type StationNear, type Tab } from './view';
-import { useWhere, type Where } from './where';
+import { NEAR_LINES } from '../../shared/config';
+import { isLinesBody, type LineStatus } from '../../shared/api';
+import type { VerdictKind } from '../../shared/rules/types';
+import { lineColour } from '../lib/lineColours';
+import { useLive, useServerNow } from '../hooks/live';
+import { href } from '../hooks/route';
+import type { SavedItem } from '../hooks/saved';
+import { BusTab } from '../features/buses/Buses';
+import { useIndex } from '../features/search/Search';
+import { LinesSkeleton } from '../components/Skeletons';
+import { LoadError, StaleBanner, StatusText, Updated, useTitle } from '../components/ui';
+import { formatDistance, rowNote, rowReason, sortLines, stationsNear, TABS, tabOf, tabSummary, type StationNear, type Tab } from '../lib/view';
+import { useWhere, type Where } from '../hooks/where';
 
 const TAB_KEY = 'tfl:tab';
 

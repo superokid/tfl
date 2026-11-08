@@ -1,14 +1,11 @@
-import { useState } from 'react';
-import { isLineBody, type LineBody } from '../shared/api';
-import type { StationBoard } from '../shared/boards';
-import { DISPLAY } from '../shared/config';
-import { lineColour } from './lineColours';
-import { href, useLive, useServerNow } from './live';
-import type { useSaved } from './saved';
-import { Times, upcoming } from './Times';
-import { LineSkeleton } from './Skeletons';
-import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
-import { checkCard, evidenceText, isOverThreshold, severityFromSays } from './view';
+import { Board } from '../features/boards/Board';
+import { isLineBody, type LineBody } from '../../shared/api';
+import { lineColour } from '../lib/lineColours';
+import { useLive, useServerNow } from '../hooks/live';
+import type { useSaved } from '../hooks/saved';
+import { LineSkeleton } from '../components/Skeletons';
+import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
+import { checkCard, evidenceText, isOverThreshold, severityFromSays } from '../lib/view';
 
 /**
  * One line: TfL's status and message, our live check in plain words, and next trains. Fetched on open;
@@ -73,33 +70,6 @@ function LineBodyView({ line, now }: { line: LineBody; now: number }) {
         </section>
       )}
     </>
-  );
-}
-
-export function Board({ board, now, link = true }: { board: StationBoard; now: number; link?: boolean }) {
-  const [all, setAll] = useState(false);
-  const directions = board.directions.filter((d) => upcoming(d, now).length > 0);
-  const more = directions.some((d) => upcoming(d, now).length > DISPLAY.boardRows);
-  return (
-    <section className="board" aria-label={`Next trains at ${board.name}`}>
-      {link && (
-        <h4>
-          <a href={href({ page: 'station', id: board.stopId })}>{board.name}</a>
-        </h4>
-      )}
-      {!board.live ? (
-        <p className="small muted">Live times unavailable right now.</p>
-      ) : directions.length === 0 ? (
-        <p className="small muted">No services predicted.</p>
-      ) : (
-        directions.map((d) => <Times key={d.key} d={d} now={now} limit={all ? undefined : DISPLAY.boardRows} />)
-      )}
-      {more && (
-        <button type="button" className="more" aria-expanded={all} onClick={() => setAll(!all)}>
-          {all ? 'Fewer times' : 'More times'}
-        </button>
-      )}
-    </section>
   );
 }
 

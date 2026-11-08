@@ -1,6 +1,6 @@
 /**
- * GET /api/status (SPEC §4.1, ADR-006): stale-while-revalidate over a D1 snapshot. Most requests are one
- * D1 read. Only the lease winner calls TfL, and only within the global budget.
+ * GET /api/status (SPEC §4.1, ADR-006/009): stale-while-revalidate over a D1 snapshot. Most requests are
+ * one D1 read. Only the lease winner calls TfL: at most one refresh per 30 s (≤ ~45 TfL calls).
  */
 import type { ErrorBody, Snapshot, StatusBody } from '../shared/api';
 import { LIVE } from '../shared/config';
@@ -37,10 +37,6 @@ const unavailable = () =>
 
 async function refresh(deps: StatusDeps, previous: Snapshot | null): Promise<Snapshot | null> {
   const { store, reference, now } = deps;
-  if (!(await store.reserveBudget(now, plannedCalls(reference), LIVE.budgetPerMinute))) {
-    await store.markFailed(now);
-    return null;
-  }
   try {
     const snapshot = await buildSnapshot(deps.tfl(), reference, now, previous);
     await store.write(snapshot);

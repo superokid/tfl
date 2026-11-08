@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isStatusBody, type StatusBody } from '../shared/api';
 
-const REFRESH_MS = 30_000;
+/** Free-tier friendly (ADR-009): every /api call counts against a daily limit shared with other sites. */
+export const REFRESH_MS = 60_000;
+/** Stop auto-refreshing after this long without the user touching the page; resume on any interaction. */
+export const IDLE_MS = 10 * 60_000;
 const TIMEOUT_MS = 12_000;
 const STORAGE_KEY = 'tfl-status:last';
 
@@ -15,6 +18,8 @@ export interface StatusState {
   receivedAt: number;
   loading: boolean;
   error: string | null;
+  /** Auto-refresh paused because nobody has interacted with the page for a while. */
+  paused: boolean;
 }
 
 function readSaved(): { data: StatusBody; savedAt: number } | null {
@@ -37,13 +42,16 @@ function save(data: StatusBody) {
   }
 }
 
-/** Fetches /api/status now and every 30 s while the tab is visible; falls back to the device copy. */
+/**
+ * Fetches /api/status now and every 60 s while the tab is visible and someone has used the page in the
+ * last 10 min; falls back to the device copy.
+ */
 export function useStatus() {
   const [state, setState] = useState<StatusState>(() => {
     const saved = readSaved();
     return saved
-      ? { data: saved.data, source: 'device', receivedAt: saved.savedAt, loading: true, error: null }
-      : { data: null, source: null, receivedAt: 0, loading: true, error: null };
+      ? { data: saved.data, source: 'device', receivedAt: saved.savedAt, loading: true, error: null, paused: false }
+      : { data: null, source: null, receivedAt: 0, loading: true, error: null, paused: false };
   });
   const inFlight = useRef<AbortController | null>(null);
 
@@ -57,14 +65,14 @@ export function useStatus() {
       const body: unknown = await res.json().catch(() => null);
       if (!res.ok || !isStatusBody(body)) throw new Error(res.ok ? 'Unexpected response' : `HTTP ${res.status}`);
       save(body);
-      setState({ data: body, source: 'live', receivedAt: Date.now(), loading: false, error: null });
+      setState((s) => ({ ...s, data: body, source: 'live', receivedAt: Date.now(), loading: false, error: null }));
     } catch (err) {
       if (controller.signal.aborted && inFlight.current !== controller) return; // superseded
       const message = !navigator.onLine ? "You're offline" : err instanceof Error && err.name !== 'AbortError' ? err.message : 'Timed out';
       setState((s) => {
         const saved = s.data ? null : readSaved();
         return saved
-          ? { data: saved.data, source: 'device', receivedAt: saved.savedAt, loading: false, error: message }
+          ? { ...s, data: saved.data, source: 'device', receivedAt: saved.savedAt, loading: false, error: message }
           : { ...s, source: s.data ? 'device' : null, loading: false, error: message };
       });
     } finally {
@@ -76,18 +84,43 @@ export function useStatus() {
     // First load from a timer callback: the effect subscribes to an external source (the API) and never
     // sets state synchronously in its body.
     const first = setTimeout(() => void load(), 0);
-    let timer = setInterval(() => document.visibilityState === 'visible' && void load(), REFRESH_MS);
-    const onVisible = () => {
+    let lastActive = Date.now();
+    let paused = false;
+    const tick = () => {
       if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastActive > IDLE_MS) {
+        if (!paused) setState((s) => ({ ...s, paused: (paused = true) }));
+        return;
+      }
+      void load();
+    };
+    let timer = setInterval(tick, REFRESH_MS);
+    const restart = () => {
       clearInterval(timer);
       void load();
-      timer = setInterval(() => document.visibilityState === 'visible' && void load(), REFRESH_MS);
+      timer = setInterval(tick, REFRESH_MS);
     };
+    const onActive = () => {
+      lastActive = Date.now();
+      if (paused) {
+        setState((s) => ({ ...s, paused: (paused = false) }));
+        restart();
+      }
+    };
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      lastActive = Date.now();
+      if (paused) setState((s) => ({ ...s, paused: (paused = false) }));
+      restart();
+    };
+    const events = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const;
+    for (const e of events) window.addEventListener(e, onActive, { passive: true });
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onVisible);
     return () => {
       clearTimeout(first);
       clearInterval(timer);
+      for (const e of events) window.removeEventListener(e, onActive);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onVisible);
       inFlight.current?.abort();

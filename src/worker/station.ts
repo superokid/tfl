@@ -1,7 +1,7 @@
 /**
- * GET /api/station/:id: live departures at any rail station, on demand (ADR-008). One TfL call per
- * stop id at the station (≤ 4), cached 15 s per data centre, counted in the global budget. If TfL fails,
- * the last good copy is served marked stale.
+ * GET /api/station/:id: live departures at any rail station, on demand (ADR-009). One TfL call per
+ * stop id at the station (≤ 4), cached 30 s per data centre, limited per Worker instance in memory (no D1
+ * writes). If TfL fails, the last good copy is served marked stale.
  */
 import type { ErrorBody, StationBody } from '../shared/api';
 import { buildBoard } from '../shared/boards';
@@ -11,7 +11,6 @@ import type { ReferenceFile, StationsFile } from '../shared/reference/types';
 import type { Prediction } from '../shared/rules/types';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
-import type { Store } from './store';
 import type { TflClient } from './tfl/client';
 import { parseArrivals } from './tfl/parse';
 
@@ -45,12 +44,26 @@ export class MemoryStationCache implements StationCache {
   }
 }
 
+/** Sliding one-minute window of TfL calls, per Worker instance. Costs nothing on the free tier. */
+export class CallLimiter {
+  private calls: number[] = [];
+  constructor(private readonly perMinute: number) {}
+  tryTake(now: number, n: number): boolean {
+    this.calls = this.calls.filter((t) => now - t < 60_000);
+    if (this.calls.length + n > this.perMinute) return false;
+    for (let i = 0; i < n; i++) this.calls.push(now);
+    return true;
+  }
+}
+
+export const stationLimiter = new CallLimiter(LIVE.stationCallsPerMinute);
+
 export interface StationDeps {
   id: string;
   stations: StationsFile;
   reference: ReferenceFile;
   cache: StationCache;
-  store: Store | null;
+  limiter: CallLimiter;
   tfl: () => TflClient;
   now: number;
 }
@@ -89,7 +102,7 @@ async function fetchStation(station: StationEntry, deps: StationDeps): Promise<S
 }
 
 export async function handleStation(deps: StationDeps): Promise<Response> {
-  const { id, now, cache, store } = deps;
+  const { id, now, cache, limiter } = deps;
   const station = deps.stations.stations.find((s) => s.id === id);
   if (!station) {
     return json({ error: 'unknown_station' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
@@ -98,11 +111,7 @@ export async function handleStation(deps: StationDeps): Promise<Response> {
   const cached = await cache.get(id).catch(() => null);
   if (cached && now - cached.checkedAt < LIVE.stationFreshMs) return respond(cached, now, false);
 
-  // The same per-minute budget as line refreshes protects TfL's limit for everyone.
-  const allowed = store
-    ? await store.reserveBudget(now, station.stopIds.length, LIVE.budgetPerMinute).catch(() => true)
-    : true;
-  const fresh = allowed ? await fetchStation(station, deps) : null;
+  const fresh = limiter.tryTake(now, station.stopIds.length) ? await fetchStation(station, deps) : null;
   if (fresh) {
     await cache.put(id, fresh).catch(() => {});
     return respond(fresh, now, false);

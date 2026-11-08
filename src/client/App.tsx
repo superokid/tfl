@@ -7,7 +7,7 @@ import { badgeLabel, evidenceText, formatAge, formatDue, groupLines, headline, i
 const STALE_AFTER_MS = 90_000;
 
 export function App() {
-  const { data, source, receivedAt, loading, error, reload } = useStatus();
+  const { data, source, receivedAt, loading, error, paused, reload } = useStatus();
   const now = useServerNow(data, receivedAt);
   const age = data && now !== null ? now - data.checkedAt : null;
   const groups = data ? groupLines(data.lines) : null;
@@ -34,6 +34,7 @@ export function App() {
           <>
             <span className={`dot ${outdated ? 'dot-warn' : 'dot-live'}`} aria-hidden="true" />
             {outdated ? 'Last updated' : 'Live · updated'} {formatAge(age)}
+            {paused && ' · auto-refresh paused, tap ↻'}
           </>
         ) : loading ? (
           'Checking TfL…'

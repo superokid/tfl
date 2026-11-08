@@ -90,7 +90,7 @@ describe('/api/status data layer (ADR-006)', () => {
     const tfl = fakeTfl();
     const res = await handleStatus(deps(store, tfl).d);
     expect(tfl.seen).toHaveLength(0);
-    expect(res.headers.get('Cache-Control')).toBe('public, max-age=10');
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=25');
   });
 
   it('15–60 s: serves the stored snapshot now and refreshes in the background', async () => {
@@ -156,13 +156,19 @@ describe('/api/status data layer (ADR-006)', () => {
     expect(b2.lines.every((l) => l.checkedAt === NOW)).toBe(true);
   });
 
-  it('budget spent: no TfL call, stored data marked stale', async () => {
-    const store = await seeded(NOW - 120_000);
-    store.budget.set(Math.floor(NOW / 60_000), LIVE.budgetPerMinute);
-    const tfl = fakeTfl();
-    const b = await body(await handleStatus(deps(store, tfl).d));
-    expect(tfl.seen).toHaveLength(0);
-    expect(b.stale).toBe(true);
+  it('free-tier footprint: heavy traffic for 10 min → ≤ 1 refresh per 30 s, 2 D1 writes each', async () => {
+    const store = new MemoryStore();
+    let refreshes = 0;
+    // 600 requests, one per second, from many visitors.
+    for (let t = 0; t < 600; t++) {
+      const tfl = fakeTfl();
+      const { d, background } = deps(store, tfl, NOW + t * 1000);
+      await handleStatus(d);
+      await Promise.all(background);
+      if (tfl.seen.length > 0) refreshes++;
+    }
+    expect(refreshes).toBeLessThanOrEqual(600 / 30 + 1);
+    expect(store.writes).toBeLessThanOrEqual(2 * refreshes);
   });
 
   it('a refresh stays within the subrequest plan and never has more than 6 calls in flight', async () => {

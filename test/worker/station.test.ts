@@ -4,8 +4,7 @@ import { isStationBody, type StationBody } from '../../src/shared/api';
 import { LIVE } from '../../src/shared/config';
 import { collectStations } from '../../src/shared/reference/derive';
 import { RAIL_REFERENCE, STATIONS } from '../../src/shared/reference/load';
-import { handleStation, MemoryStationCache, type StationDeps } from '../../src/worker/station';
-import { MemoryStore } from '../../src/worker/store';
+import { CallLimiter, handleStation, MemoryStationCache, type StationDeps } from '../../src/worker/station';
 import { createTflClient } from '../../src/worker/tfl/client';
 
 const fixture = (name: string) => JSON.parse(readFileSync(`test/fixtures/${name}.json`, 'utf8')).body;
@@ -22,8 +21,8 @@ function fakeTfl(down = false) {
   return { seen, client: () => createTflClient('NOT-A-REAL-KEY-NOT-A-REAL-KEY', fetchImpl) };
 }
 
-function deps(id: string, tfl = fakeTfl(), cache = new MemoryStationCache(), store: MemoryStore | null = new MemoryStore(), now = NOW): StationDeps {
-  return { id, stations: STATIONS, reference: RAIL_REFERENCE, cache, store, tfl: tfl.client, now };
+function deps(id: string, tfl = fakeTfl(), cache = new MemoryStationCache(), limiter = new CallLimiter(LIVE.stationCallsPerMinute), now = NOW): StationDeps {
+  return { id, stations: STATIONS, reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now };
 }
 
 async function body(res: Response): Promise<StationBody> {
@@ -71,25 +70,32 @@ describe('/api/station/:id', () => {
     const cache = new MemoryStationCache();
     await handleStation(deps('940GZZLUOXC', fakeTfl(), cache));
     const tfl = fakeTfl();
-    await handleStation(deps('940GZZLUOXC', tfl, cache, new MemoryStore(), NOW + 5_000));
+    await handleStation(deps('940GZZLUOXC', tfl, cache, undefined, NOW + 5_000));
     expect(tfl.seen).toHaveLength(0);
   });
 
   it('TfL down: last good copy, marked stale; nothing cached → 503', async () => {
     const cache = new MemoryStationCache();
     await handleStation(deps('940GZZLUOXC', fakeTfl(), cache));
-    const b = await body(await handleStation(deps('940GZZLUOXC', fakeTfl(true), cache, new MemoryStore(), NOW + 60_000)));
+    const b = await body(await handleStation(deps('940GZZLUOXC', fakeTfl(true), cache, undefined, NOW + 60_000)));
     expect(b).toMatchObject({ stale: true, checkedAt: NOW });
     const res = await handleStation(deps('940GZZLUOXC', fakeTfl(true)));
     expect(res.status).toBe(503);
   });
 
-  it('budget spent: no TfL call', async () => {
-    const store = new MemoryStore();
-    store.budget.set(Math.floor(NOW / 60_000), LIVE.budgetPerMinute);
+  it('per-instance limit reached: no TfL call (and no D1 write to count it)', async () => {
+    const limiter = new CallLimiter(1);
+    expect(limiter.tryTake(NOW, 1)).toBe(true);
     const tfl = fakeTfl();
-    const res = await handleStation(deps('940GZZLUOXC', tfl, new MemoryStationCache(), store));
+    const res = await handleStation(deps('940GZZLUOXC', tfl, new MemoryStationCache(), limiter));
     expect(tfl.seen).toHaveLength(0);
     expect(res.status).toBe(503);
+  });
+
+  it('the limiter frees up after a minute', () => {
+    const limiter = new CallLimiter(2);
+    expect(limiter.tryTake(NOW, 2)).toBe(true);
+    expect(limiter.tryTake(NOW + 59_000, 1)).toBe(false);
+    expect(limiter.tryTake(NOW + 60_000, 1)).toBe(true);
   });
 });

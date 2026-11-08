@@ -2,7 +2,7 @@ import type { ErrorBody, HealthBody } from '../shared/api';
 import { RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
-import { EdgeStationCache, handleStation } from './station';
+import { EdgeStationCache, handleStation, stationLimiter } from './station';
 import { handleStatus, handleStatusWithoutStore } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
@@ -65,7 +65,7 @@ export default {
         stations: STATIONS,
         reference: RAIL_REFERENCE,
         cache: new EdgeStationCache(),
-        store: env.DB ? new D1Store(env.DB) : null,
+        limiter: stationLimiter,
         tfl: () => createTflClient(env.TFL_APP_KEY),
         now: Date.now(),
       });

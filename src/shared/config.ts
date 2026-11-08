@@ -57,18 +57,20 @@ export const VEHICLE_NOUN: Record<Mode, string> = {
 
 export const LONDON_TZ = 'Europe/London';
 
-/** Live data layer (SPEC §4.1, ADR-001/006). */
+/**
+ * Live data layer (SPEC §4.1, ADR-001/006/009). Sized for a free Cloudflare account shared with other
+ * sites: at most one refresh per 30 s (TfL's own update rate), 2 D1 row writes per refresh.
+ */
 export const LIVE = {
   /** Serve the stored snapshot as-is below this age. */
-  freshMs: 15_000,
+  freshMs: 30_000,
   /** Between fresh and this: serve stored, refresh in the background. Above: refresh inline. */
-  staleWhileRevalidateMs: 60_000,
-  /** A refresh holds the lease this long; a crashed refresher's lease expires. */
-  leaseMs: 20_000,
+  staleWhileRevalidateMs: 90_000,
+  /** A refresh holds the lease this long. It is never released on success (saves a D1 write): it simply
+   * expires before the snapshot is due again. A crashed refresher's lease expires the same way. */
+  leaseMs: 25_000,
   /** After a failed refresh, serve stored data without retrying TfL for this long. */
   failureBackoffMs: 10_000,
-  /** Global TfL call budget per minute (TfL allows 500). */
-  budgetPerMinute: 400,
   /** Max TfL calls per refresh (50 subrequests minus D1 calls). */
   maxCallsPerRefresh: 40,
   /** Workers allow 6 open connections per invocation. */
@@ -80,7 +82,9 @@ export const LIVE = {
   /** If D1 is down, memoise a direct TfL result per isolate for this long. */
   memoMs: 15_000,
   /** Station departures: fresh this long, then refetched on request. */
-  stationFreshMs: 15_000,
+  stationFreshMs: 30_000,
+  /** Station TfL calls per minute per Worker instance (in memory: no D1 writes). */
+  stationCallsPerMinute: 60,
   /** A station's last good departures are kept this long for outages (Cache API, per data centre). */
   stationKeepMs: 3_600_000,
 } as const;

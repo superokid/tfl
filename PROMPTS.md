@@ -134,5 +134,7 @@ Sample of prompts used (Claude Code), with corrections.
 - Cause: line and check-all waited for the status call before sending arrivals. They now go out together;
   2 calls are reserved for status and detail. Home also reads both D1 snapshots at once.
 - Cold `/api/line/:id` went from 0.8–2.6 s to 0.4–0.9 s; `/api/checks` went from 4.1 s to 2.6 s.
-- Unverified: the Cache API may do nothing on `*.workers.dev` (the docs only promise it on custom domains).
-  If so, every edge-cached endpoint is cold in production.
+- "Deploy and check": the edge cache does work on `*.workers.dev` (max-age counts down, hits ≈ 0.25 s). From
+  Indonesia, requests alternate SIN/NRT colos, each with its own cache, and every cold call crosses to London.
+- Correction: deploying from a clean worktree (no `.wrangler` state) auto-created D1 in APAC with no tables,
+  not `weur`. Needs recreating near London, with `database_id` pinned in `wrangler.jsonc`.

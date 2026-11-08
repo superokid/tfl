@@ -98,7 +98,11 @@ export function buildBoard(
 /** TfL's passenger messages for a line: de-duplicated, without the "Bakerloo Line:" prefix. */
 export function lineMessages(lineName: string, reasons: (string | null)[]): string[] {
   const prefix = new RegExp(`^${lineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( line)?:\\s*`, 'i');
-  return [...new Set(reasons.filter((r): r is string => !!r).map((r) => r.replace(prefix, '').trim()))].filter(Boolean);
+  const clean = (r: string) => {
+    const t = r.replace(prefix, '').trim();
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  return [...new Set(reasons.filter((r): r is string => !!r).map(clean))].filter(Boolean);
 }
 
 /**

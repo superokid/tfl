@@ -81,4 +81,9 @@ describe('lineMessages', () => {
   it('handles names with regex characters', () => {
     expect(lineMessages('Hammersmith & City', ['Hammersmith & City Line: Minor delays.'])).toEqual(['Minor delays.']);
   });
+  it('starts with a capital once the prefix is gone (seen live: Waterloo & City)', () => {
+    expect(lineMessages('Waterloo & City', ['Waterloo & City line: service operates 06:00 until 00:30.'])).toEqual([
+      'Service operates 06:00 until 00:30.',
+    ]);
+  });
 });

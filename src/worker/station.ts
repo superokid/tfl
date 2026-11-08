@@ -161,10 +161,15 @@ export async function loadStation(deps: StationDeps, station = resolve(deps)): P
   let pending = inFlight.get(id);
   if (!pending) {
     pending = limiter.tryTake(now, station.stopIds.length)
-      ? fetchStation(station, deps).then(async (fresh) => {
-          if (fresh) await cache.put(id, fresh).catch(() => {});
-          return fresh;
-        })
+      ? fetchStation(station, deps)
+          .then(async (fresh) => {
+            if (fresh) await cache.put(id, fresh).catch(() => {});
+            return fresh;
+          })
+          .catch((err: unknown) => {
+            console.error('station failed:', redact(err instanceof Error ? err.message : String(err)));
+            return null;
+          })
       : Promise.resolve(null);
     inFlight.set(id, pending);
     void pending.finally(() => inFlight.delete(id));

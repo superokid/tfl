@@ -38,8 +38,13 @@ export class D1Store<S extends Versioned> implements Store<S> {
       .prepare('SELECT body, failed_at FROM snapshots WHERE key = ?1')
       .bind(this.key)
       .first<{ body: string; failed_at: number | null }>();
-    const parsed = row ? (JSON.parse(row.body) as S) : null;
-    const snapshot = parsed && parsed.version === this.version ? parsed : null;
+    let parsed: S | null = null;
+    try {
+      parsed = row ? (JSON.parse(row.body) as S) : null;
+    } catch {
+      // A corrupt row reads as no snapshot: the next refresh overwrites it.
+    }
+    const snapshot = parsed?.version === this.version ? parsed : null;
     return { snapshot, failedAt: snapshot ? (row?.failed_at ?? null) : null };
   }
 

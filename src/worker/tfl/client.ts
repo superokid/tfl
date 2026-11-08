@@ -45,7 +45,11 @@ export function createTflClient(appKey: string, fetchImpl: typeof fetch = fetch)
           const timeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
           throw new TflError(timeout ? 'timeout' : 'network', `${path}: ${String(err)}`);
         }
-        if (!res.ok) throw new TflError('http', `${path}: HTTP ${res.status}`);
+        if (!res.ok) {
+          // Release the unread body: it would otherwise hold one of the 6 connections.
+          await res.body?.cancel().catch(() => {});
+          throw new TflError('http', `${path}: HTTP ${res.status}`);
+        }
         try {
           return (await res.json()) as unknown;
         } catch {

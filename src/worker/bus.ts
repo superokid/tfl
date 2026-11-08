@@ -184,13 +184,17 @@ async function fetchRoute(route: BusesFile['routes'][number], deps: BusDeps): Pr
   ]);
   if (status.status === 'rejected' && arrivals.status === 'rejected') return null;
 
-  const statuses = status.status === 'fulfilled' ? activeStatuses(parseStatuses(status.value).get(route.id) ?? [], deps.now) : [];
-  let times: Map<string, number[]> | null = null;
-  try {
-    times = arrivals.status === 'fulfilled' ? arrivalsByStop(arrivals.value, deps.now) : null;
-  } catch {
-    times = null;
-  }
+  // An unreadable status or arrivals body loses only that part: the stops still show.
+  const attempt = <T>(f: () => T): T | null => {
+    try {
+      return f();
+    } catch {
+      return null;
+    }
+  };
+  const statuses =
+    status.status === 'fulfilled' ? activeStatuses(attempt(() => parseStatuses(status.value).get(route.id)) ?? [], deps.now) : [];
+  const times = arrivals.status === 'fulfilled' ? attempt(() => arrivalsByStop(arrivals.value, deps.now)) : null;
   const directions: RouteDirection[] = [];
   seqs.forEach((r, i) => {
     const stops = r.status === 'fulfilled' ? (r.value as RouteStopRef[]) : [];

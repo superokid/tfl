@@ -29,16 +29,20 @@ const unavailable = () =>
 
 const maxAge = (checkedAt: number, now: number) => Math.max(1, Math.round((LIVE.freshMs - (now - checkedAt)) / 1000));
 
+const logError = (what: string, err: unknown) => console.error(what, redact(err instanceof Error ? err.message : String(err)));
+
+/** Never throws: a store write failing must not lose fresh data or the last good copy. */
 async function refresh<S extends Versioned>(s: Serve<S>, previous: S | null): Promise<S | null> {
+  let snapshot: S;
   try {
-    const snapshot = await s.build(previous);
-    await s.store.write(snapshot);
-    return snapshot;
+    snapshot = await s.build(previous);
   } catch (err) {
-    console.error('refresh failed:', redact(err instanceof Error ? err.message : String(err)));
-    await s.store.markFailed(s.now);
+    logError('refresh failed:', err);
+    await s.store.markFailed(s.now).catch((e: unknown) => logError('store markFailed failed:', e));
     return null;
   }
+  await s.store.write(snapshot).catch((e: unknown) => logError('store write failed:', e));
+  return snapshot;
 }
 
 async function serve<S extends Versioned>(s: Serve<S>): Promise<Response> {

@@ -51,6 +51,9 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
 - Some stops have no `lines` (stands, unused stops): skipped. `stopLetter` can be odd (`->W`): shown only if
   1–3 letters or digits.
 - `/StopPoint/{id1},{id2}/Arrivals` → 404: arrivals need one call per stop.
+- A bus stop's arrivals carry its flag letter as `platformName` (`RC`) and a `towards` text, so the stop page
+  needs no extra call. That `towards` can differ from the StopPoint `Towards` (RC: "Baker Street Or Great
+  Portand Street" vs "Marble Arch Or Great Portland Street"); the letter matches.
 
 ## Still to verify
 - How often `timing.read` advances; responses during a partial TfL outage.

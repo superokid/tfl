@@ -146,14 +146,15 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
   (≥ 3 chars, 400 ms after typing). Stop results show "towards …".
 - **Saved:** lines, stations, stops and routes as one-tap chips (device only).
 - **Home:** mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus; they wrap, never hidden). Lines as
-  TfL lists them: problems first, then A–Z; status in plain words with an icon. Live-check note only when
+  TfL lists them: problems first, then A–Z; status in plain words with an icon, and TfL's reason (2 lines)
+  under a line with a problem. Live-check note only when
   it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
   mismatches.
 - **Line:** TfL's status and message; "Live trains" card in plain words (why it couldn't check, if so); next
   trains at both check stations; "How we checked" evidence.
-- **Station / bus stop:** each line's status with live departures by platform; bus stops list routes with
-  destination and next 3 times.
-- **Bus tab:** saved stops and routes, one box for a stop name or route number, then "Near you": the 5
+- **Station / bus stop:** each line's status with live departures by platform, 3 each ("More times" for
+  the rest); bus stops show their flag letter and direction, and list routes with destination and next 3 times.
+- **Bus tab:** saved stops and routes (search is the box at the top), then "Near you": the 5
   closest stops (letter, direction, distance) with the next buses per route, from "Use my location".
 - **Bus route:** TfL's status and message, then a direction toggle and every stop in order with its next
   3 buses (stop letters as on the flag); tap a stop for its board. Not checked against live buses.

@@ -138,3 +138,13 @@ Sample of prompts used (Claude Code), with corrections.
   Indonesia, requests alternate SIN/NRT colos, each with its own cache, and every cold call crosses to London.
 - Correction: deploying from a clean worktree (no `.wrangler` state) auto-created D1 in APAC with no tables,
   not `weur`. Deleted it, recreated in `weur`, pinned `database_id` in `wrangler.jsonc`, migrated, redeployed.
+
+## 2026-11-08: UI/UX review
+- "review the UI UX, make sure it very user friendly and usefull". Reviewed every screen at 390 and 320 px,
+  light and dark, on live data.
+- Found: boards of 6 trains per platform (Oxford Circus was 3 screens long), bus stop page with no letter or
+  direction, home hiding why a line is delayed, two search boxes stacked on the Bus tab, a TfL reason
+  starting lowercase, bus times wrapping at 320 px.
+- Fixed: 3 per platform with "More times"; stop letter and direction from the arrivals already fetched (no
+  extra call); TfL's reason under problem lines; one search box; page titles per screen.
+- Another session was editing the same folder, so this work moved to its own worktree.

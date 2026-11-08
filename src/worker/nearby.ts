@@ -10,7 +10,7 @@ import { LIVE, NEARBY } from '../shared/config';
 import type { BusesFile, ReferenceFile, StationsFile } from '../shared/reference/types';
 import type { JsonCache } from './bus';
 import { json } from './http';
-import { type CallLimiter, isBusStopId, loadStation, type StationCache } from './station';
+import { type CallLimiter, isBusStopId, loadStation, type StationCache, stopLetter } from './station';
 import { TflError, type TflClient } from './tfl/client';
 
 export interface NearbyDeps {
@@ -58,7 +58,7 @@ export function parseNearbyStops(body: unknown, max: number): StopRef[] {
       return {
         id: p.id as string,
         name: str(p.commonName) ?? (p.id as string),
-        letter: str(p.stopLetter),
+        letter: stopLetter(p.stopLetter),
         towards: str(towards?.value),
         distanceM: Math.round(typeof p.distance === 'number' ? p.distance : 0),
       };

@@ -62,6 +62,12 @@ export const onDemandLimiter = new CallLimiter(LIVE.stationCallsPerMinute);
 /** A single bus stop (490000173RC). Stop areas (490G…) return no arrivals, so they're not accepted. */
 export const isBusStopId = (id: string) => /^490[0-9]{3,}[A-Z0-9]{0,4}$/.test(id) && !id.startsWith('490G');
 
+/** The letter on a bus stop flag ("RC"); null for odd values TfL sometimes gives ("->W"). */
+export const stopLetter = (v: unknown): string | null => {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^[A-Z0-9]{1,3}$/.test(s) ? s : null;
+};
+
 /**
  * Requests for the same station while a fetch is running share it (per Worker instance), so a cache
  * expiry under load causes one TfL fetch, not a stampede. Found by the load test (scripts/load.ts).
@@ -90,13 +96,20 @@ async function fetchStation(station: StationEntry, deps: StationDeps): Promise<S
   const tfl = deps.tfl();
   const bound = Object.fromEntries(deps.reference.lines.map((l) => [l.lineId, l.boundDirections]));
   let nameFromTfl: string | null = null;
+  // A bus stop's arrivals carry its flag letter (platformName) and direction (towards).
+  let stop: { letter: string | null; towards: string | null } | null = null;
   const results = await Promise.all(
     station.stopIds.map(async (stopId) => {
       try {
         const body = await tfl.getJson(`/StopPoint/${stopId}/Arrivals`);
         const first: unknown = Array.isArray(body) ? body[0] : null;
-        if (first && typeof first === 'object' && typeof (first as { stationName?: unknown }).stationName === 'string') {
-          nameFromTfl ??= (first as { stationName: string }).stationName;
+        if (first && typeof first === 'object') {
+          const a = first as { stationName?: unknown; platformName?: unknown; towards?: unknown };
+          if (typeof a.stationName === 'string') nameFromTfl ??= a.stationName;
+          if (isBusStopId(stopId)) {
+            const towards = typeof a.towards === 'string' ? a.towards.replace(/\s+/g, ' ').trim() : '';
+            stop = { letter: stopLetter(a.platformName), towards: towards || null };
+          }
         }
         return { stopId, byLine: parseArrivals(body, stopId, bound) };
       } catch (err) {
@@ -125,7 +138,7 @@ async function fetchStation(station: StationEntry, deps: StationDeps): Promise<S
     return { lineId, lineName: names.get(lineId) ?? lineId, board };
   });
   const name = station.name || (nameFromTfl as string | null)?.replace(/\s+/g, ' ').trim() || station.id;
-  return { stationId: station.id, name, checkedAt: deps.now, serverNow: deps.now, stale: false, lines };
+  return { stationId: station.id, name, ...(stop ?? {}), checkedAt: deps.now, serverNow: deps.now, stale: false, lines };
 }
 
 /** Resolves a station or single bus stop id; undefined if it's neither. */

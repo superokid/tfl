@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isBusRouteBody, isStationBody, type BusRouteBody, type BusSearchBody } from '../../src/shared/api';
+import { isBusRouteBody, isStationBody, type BusRouteBody, type BusSearchBody, type StationBody } from '../../src/shared/api';
 import { LIVE } from '../../src/shared/config';
 import { BUSES, RAIL_REFERENCE, STATIONS } from '../../src/shared/reference/load';
 import { arrivalsByStop, handleBusRoute, handleBusSearch, MemoryJsonCache, normaliseQuery, routeStops } from '../../src/worker/bus';
-import { CallLimiter, handleStation, isBusStopId, MemoryStationCache } from '../../src/worker/station';
+import { CallLimiter, handleStation, isBusStopId, MemoryStationCache, stopLetter } from '../../src/worker/station';
 import { createTflClient } from '../../src/worker/tfl/client';
 
 const fixture = (name: string) => JSON.parse(readFileSync(`test/fixtures/${name}.json`, 'utf8')).body;
@@ -79,6 +79,28 @@ describe('bus stops', () => {
     expect(body.name).toMatch(/^Oxford Circus Station/);
     expect(body.name).not.toMatch(/\s{2}/);
     expect(body.lines.map((l) => l.lineId)).toEqual([...body.lines.map((l) => l.lineId)].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })));
+  });
+
+  it("a bus stop gives its flag letter and direction from TfL's arrivals, so passengers can find the right side", async () => {
+    const res = await handleStation({
+      id: '490000173RC',
+      stations: STATIONS,
+      buses: BUSES,
+      reference: RAIL_REFERENCE,
+      cache: new MemoryStationCache(),
+      limiter: new CallLimiter(60),
+      tfl: fakeTfl().client,
+      now: NOW - 60_000,
+    });
+    const b = (await res.json()) as StationBody;
+    expect(b.letter).toBe('RC');
+    expect(b.towards).toBe('Baker Street Or Great Portand Street');
+  });
+
+  it('an odd stop letter is not shown', () => {
+    expect(stopLetter('->W')).toBeNull();
+    expect(stopLetter('RC')).toBe('RC');
+    expect(stopLetter(undefined)).toBeNull();
   });
 });
 

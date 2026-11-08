@@ -225,6 +225,9 @@ export function isNearbyBody(value: unknown): value is NearbyBody {
 export interface StationBody {
   stationId: string;
   name: string;
+  /** Bus stops only: the letter on the stop flag ("RC") and TfL's direction text, when known. */
+  letter?: string | null;
+  towards?: string | null;
   checkedAt: number;
   serverNow: number;
   stale: boolean;

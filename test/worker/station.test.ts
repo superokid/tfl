@@ -64,6 +64,7 @@ describe('/api/station/:id', () => {
     expect(tfl.seen).toEqual(['/StopPoint/940GZZLUOXC/Arrivals']);
     expect(b.lines.map((l) => l.lineId).sort()).toEqual(['bakerloo', 'central', 'victoria']);
     expect(b.lines.find((l) => l.lineId === 'victoria')!.board.live).toBe(true);
+    expect(b.letter).toBeUndefined(); // platforms aren't stop letters
   });
 
   it('repeat within 15 s: served from cache, no TfL call', async () => {

@@ -103,7 +103,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
           <div className="near-top">
             <p className="tab-summary">{tabSummary(shown, tabLabel)}
               {near.length > 0 && ' near you'}</p>
-            <button type="button" className="button" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
+            <button type="button" className="button button-sm" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
               {where.state === 'off' ? 'Lines near me' : 'All lines'}
             </button>
           </div>

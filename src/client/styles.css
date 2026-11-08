@@ -108,11 +108,12 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .refresh, .button, .save {
   font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
 }
-.refresh { width: 2.75rem; height: 2.75rem; font-size: 1.25rem; flex: none; }
+.refresh { width: 2.25rem; height: 2.25rem; font-size: 1.05rem; line-height: 1; padding: 0; flex: none; }
 .refresh:disabled, .button:disabled { opacity: 0.6; cursor: default; }
 .spin { display: inline-block; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .button { padding: 0.65rem 1.1rem; min-height: 2.75rem; }
+.button-sm { padding: 0.3rem 0.8rem; min-height: 2.25rem; font-size: 0.85rem; white-space: nowrap; }
 .save { padding: 0.4rem 0.85rem; min-height: 2.5rem; white-space: nowrap; }
 .save-on { color: var(--minor); border-color: currentColor; }
 

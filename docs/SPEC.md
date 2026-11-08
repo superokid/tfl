@@ -190,13 +190,13 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 
 - Key in `.dev.vars` (gitignored) and `wrangler secret` only.
 - Small commits, never squashed or rewritten.
-- `PROMPTS.md` and `docs/time-log.md` are updated as work happens.
+- `PROMPTS.md` is updated as work happens.
 
 ## 9. Phases (one branch and PR each, CI green)
 
 | # | Phase | Done when |
 |---|---|---|
-| 0 | Foundations | CI and deploy working, `/api/health` live, prompt and time logs started |
+| 0 | Foundations | CI and deploy working, `/api/health` live, prompt log started |
 | 1 | API investigation | Fixtures and notes. Spikes: horizon per mode, severity list, timetable CPU (Northern, District), overnight status, ghost trains, key in a header |
 | 2 | Rules engine | Test-first, every §7 rule case, config only |
 | 3 | Reference data | Lines, stations, gaps, hours in D1; cron; fallbacks logged |

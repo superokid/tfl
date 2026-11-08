@@ -5,7 +5,7 @@ import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { BusTab } from './Buses';
-import { LoadError, StaleBanner, StatusText, Updated } from './ui';
+import { LoadError, StaleBanner, StatusText, Updated, useTitle } from './ui';
 import { rowNote, rowReason, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
 
 const TAB_KEY = 'tfl:tab';
@@ -20,6 +20,7 @@ function readTab(): Tab {
 }
 
 export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
+  useTitle(null);
   const [tab, setTabState] = useState<Tab>(readTab);
   // The Bus tab has its own data: rail statuses aren't fetched while it's open.
   const rail = tab !== 'bus';

@@ -1,5 +1,5 @@
 /** Small shared pieces used by every page. */
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import type { SavedItem } from './saved';
 import { formatAge, statusTone, type Tone } from './view';
 import type { Expected } from '../shared/rules/types';
@@ -88,7 +88,15 @@ export function SaveButton({ item, saved, onToggle }: { item: SavedItem; saved: 
   );
 }
 
+/** Browser tab and history title, so screen readers and the back list name the page. */
+export function useTitle(title: string | null) {
+  useEffect(() => {
+    document.title = title ? `${title} · London Live` : 'London Live';
+  }, [title]);
+}
+
 export function PageHead({ colour, title, sub, children }: { colour?: string; title: string; sub?: ReactNode; children?: ReactNode }) {
+  useTitle(title);
   return (
     <div className="page-head" style={colour ? { borderLeftColor: colour } : undefined}>
       <a href="#" className="back">

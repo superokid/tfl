@@ -13,7 +13,8 @@ These rules apply to every AI-assisted change in this repository.
 - Never send the TfL key to the browser, or put it in fixtures, test output or error messages.
   The key is the `app_key` query parameter, so a TfL URL is a secret: build it only with the URL helper,
   and log or throw it only after redacting.
-- Never deploy, push, merge or rewrite git history without the user's explicit go-ahead.
+- Never push, deploy or rewrite git history without the user's explicit go-ahead. Finished phases may be
+  merged into `main` locally (fast-forward) once checks pass, without asking.
 - Never squash or amend published commits.
 - Never add polling for live status or arrivals (ADR-001). Only reference data is refreshed in the background.
 - Never hardcode what the TfL API can provide (ADR-005). Put exceptions in `overrides.ts`, with a reason.

@@ -6,7 +6,7 @@ import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { BusTab } from './Buses';
 import { LoadError, StaleBanner, StatusText, Updated } from './ui';
-import { rowNote, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
+import { rowNote, rowReason, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
 
 const TAB_KEY = 'tfl:tab';
 
@@ -104,10 +104,12 @@ const isAlert = (v: VerdictKind | undefined) => v === 'HIDDEN_DISRUPTION' || v =
 
 function LineRow({ line, verdict }: { line: LineStatus; verdict: VerdictKind | undefined }) {
   const note = rowNote(verdict);
+  const reason = rowReason(line);
   return (
     <a className="line-row" href={href({ page: 'line', id: line.lineId })} style={{ borderLeftColor: lineColour(line.lineId) }}>
       <span className="line-name">{line.lineName}</span>
       <StatusText tflSays={line.tflSays} severity={line.severity} />
+      {reason && <span className="row-reason">{reason}</span>}
       {note && <span className={`note note-${note.tone}`}>{note.text}</span>}
       <span className="chevron" aria-hidden="true">
         ›

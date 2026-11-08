@@ -6,6 +6,7 @@ import {
   formatDue,
   prettyStatus,
   rowNote,
+  rowReason,
   severityFromSays,
   searchByName,
   searchRoutes,
@@ -85,6 +86,15 @@ describe('live check in plain words', () => {
     expect(c.text).toBe("Couldn't check with live trains");
     expect(c.detail).toMatch(/timetable/);
     expect(checkCard('CANT_VERIFY', 'mixed-evidence', 'Services at Euston…').detail).toBe('Services at Euston…');
+  });
+});
+
+describe('context lines', () => {
+  it("home rows give TfL's reason only when there is a problem", () => {
+    expect(rowReason({ severity: 'MINOR', messages: ['Minor delays due to train cancellations.'] })).toBe('Minor delays due to train cancellations.');
+    expect(rowReason({ severity: null, messages: ['Odd status.'] })).toBe('Odd status.');
+    expect(rowReason({ severity: 'NORMAL', messages: ['Lifts out of order at Bank.'] })).toBeNull();
+    expect(rowReason({ severity: 'PARTIAL', messages: [] })).toBeNull();
   });
 });
 

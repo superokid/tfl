@@ -74,6 +74,11 @@ export function tabSummary(lines: Pick<LineStatus, 'severity'>[], tabLabel: stri
   return `${problems} ${problems === 1 ? 'line has' : 'lines have'} problems`;
 }
 
+/** TfL's reason under a line with a problem on the home list ("Minor delays due to …"); null otherwise. */
+export function rowReason(line: Pick<LineStatus, 'severity' | 'messages'>): string | null {
+  return line.severity !== 'NORMAL' && line.messages[0] ? line.messages[0] : null;
+}
+
 // ── Live check (our comparison), in plain words ────────────────────────────────────────────────────
 
 export interface CheckNote {

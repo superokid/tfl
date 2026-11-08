@@ -6,6 +6,7 @@ import {
   formatAge,
   formatDistance,
   formatDue,
+  loadErrorText,
   prettyStatus,
   rowNote,
   rowReason,
@@ -195,4 +196,21 @@ describe('lines near me', () => {
     [995, '1 km'],
     [1260, '1.3 km'],
   ])('%i m → %s', (m, text) => expect(formatDistance(m)).toBe(text));
+});
+
+describe('loadErrorText', () => {
+  it.each([
+    ['offline', "You're offline"],
+    ['timeout', 'Timed out'],
+    ['network', "Can't reach the service"],
+    ['invalid', 'Unexpected response'],
+    [404, 'Not found'],
+    [429, 'Too many requests, try again in a minute'],
+    [503, "TfL isn't responding"],
+    [500, 'Something went wrong (500)'],
+  ] as const)('%s → %s', (f, text) => expect(loadErrorText(f)).toBe(text));
+
+  it('never ends with a full stop, so it reads inside a sentence', () => {
+    for (const f of ['offline', 'timeout', 'network', 'invalid', 404, 429, 503, 500] as const) expect(loadErrorText(f)).not.toMatch(/\.$/);
+  });
 });

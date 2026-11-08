@@ -136,6 +136,32 @@ export function checkCard(verdict: VerdictKind, reason: VerdictReason | null, su
   }
 }
 
+// ── Load errors ─────────────────────────────────────────────────────────────────────────────────────
+
+export type LoadFailure = 'offline' | 'timeout' | 'network' | 'invalid' | number;
+
+/** Why live data didn't load, in a few words (no full stop: it is shown inside a sentence). */
+export function loadErrorText(f: LoadFailure): string {
+  switch (f) {
+    case 'offline':
+      return "You're offline";
+    case 'timeout':
+      return 'Timed out';
+    case 'network':
+      return "Can't reach the service";
+    case 'invalid':
+      return 'Unexpected response';
+    case 404:
+      return 'Not found';
+    case 429:
+      return 'Too many requests, try again in a minute';
+    case 503:
+      return "TfL isn't responding";
+    default:
+      return `Something went wrong (${f})`;
+  }
+}
+
 // ── Times ───────────────────────────────────────────────────────────────────────────────────────────
 
 /** Arrival countdown: "Due" within 30 s, else whole minutes ("1 min", "12 min"). */

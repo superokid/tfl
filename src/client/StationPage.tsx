@@ -20,7 +20,7 @@ function savedLines(): LinesBody | null {
 
 /** Live departures at a rail station or a bus stop. Fetched on open, refreshed every 60 s while open. */
 export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType<typeof useSaved>; idle: boolean }) {
-  const live = useLive(`/api/station/${id}`, isStationBody, { paused: idle });
+  const live = useLive(`/api/station/${id}`, isStationBody, { paused: idle, saveAs: `tfl:station:${id}` });
   const now = useServerNow(live.data, live.receivedAt);
   const data = live.data;
   const age = data && now !== null ? now - data.checkedAt : null;
@@ -51,7 +51,7 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
           />
         )}
       </PageHead>
-      <Updated age={age} stale={!!data?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
+      <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="departures" />}
       {!data && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}

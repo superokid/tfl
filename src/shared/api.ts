@@ -66,33 +66,6 @@ export interface LineBody extends LineReport {
   stale: boolean;
 }
 
-export function isLinesBody(value: unknown): value is LinesBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.checkedAt === 'number' &&
-    typeof v.serverNow === 'number' &&
-    typeof v.stale === 'boolean' &&
-    Array.isArray(v.lines) &&
-    v.lines.every((l: unknown) => {
-      const x = l as Record<string, unknown> | null;
-      return !!x && typeof x.lineId === 'string' && typeof x.lineName === 'string' && typeof x.tflSays === 'string' && Array.isArray(x.messages);
-    })
-  );
-}
-
-export function isLineBody(value: unknown): value is LineBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.lineId === 'string' &&
-    typeof v.serverNow === 'number' &&
-    VERDICTS.includes(v.verdict as VerdictKind) &&
-    Array.isArray(v.boards) &&
-    Array.isArray(v.evidence)
-  );
-}
-
 /** What is stored in D1 and served by /api/checks. */
 export interface Snapshot {
   version: number;
@@ -160,19 +133,6 @@ export interface BusRouteBody {
   stale: boolean;
 }
 
-export function isBusRouteBody(value: unknown): value is BusRouteBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.routeId === 'string' &&
-    Array.isArray(v.statuses) &&
-    Array.isArray(v.messages) &&
-    Array.isArray(v.directions) &&
-    typeof v.timesLive === 'boolean' &&
-    typeof v.checkedAt === 'number'
-  );
-}
-
 /** One route's next buses at a stop, to one destination: "38 to Victoria · 2, 9, 14 min". */
 export interface BusTimes {
   routeId: string;
@@ -206,22 +166,6 @@ export interface NearbyBody {
   stale: boolean;
 }
 
-export function isNearbyBody(value: unknown): value is NearbyBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.checkedAt === 'number' &&
-    typeof v.serverNow === 'number' &&
-    typeof v.stale === 'boolean' &&
-    Array.isArray(v.stops) &&
-    v.stops.every((s: unknown) => {
-      if (typeof s !== 'object' || s === null) return false;
-      const x = s as Record<string, unknown>;
-      return typeof x.id === 'string' && typeof x.name === 'string' && typeof x.distanceM === 'number' && Array.isArray(x.buses);
-    })
-  );
-}
-
 /** GET /api/station/:id: live departures at one station or bus stop, per line or route. */
 export interface StationBody {
   stationId: string;
@@ -233,19 +177,6 @@ export interface StationBody {
   serverNow: number;
   stale: boolean;
   lines: { lineId: string; lineName: string; board: StationBoard }[];
-}
-
-export function isStationBody(value: unknown): value is StationBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.stationId === 'string' &&
-    typeof v.name === 'string' &&
-    typeof v.checkedAt === 'number' &&
-    typeof v.serverNow === 'number' &&
-    typeof v.stale === 'boolean' &&
-    Array.isArray(v.lines)
-  );
 }
 
 export function isHealthBody(value: unknown): value is HealthBody {
@@ -260,30 +191,90 @@ export function isHealthBody(value: unknown): value is HealthBody {
   );
 }
 
+// ── Validators: the client renders nothing it hasn't checked (live bodies and device copies alike) ──
+
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
+const str = (v: unknown): v is string => typeof v === 'string';
+const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const strOrNull = (v: unknown) => v === null || str(v);
+const list = (v: unknown, item: (x: unknown) => boolean) => Array.isArray(v) && v.every(item);
+const strs = (v: unknown) => list(v, str);
+/** An object whose `keys` all pass `check`. */
+const has = (v: unknown, check: (x: unknown) => boolean, ...keys: string[]): v is Obj => obj(v) && keys.every((k) => check(v[k]));
+const live = (v: Obj) => num(v.checkedAt) && num(v.serverNow) && typeof v.stale === 'boolean';
+
 const VERDICTS: VerdictKind[] = ['HIDDEN_DISRUPTION', 'STALE_ALERT', 'MATCH', 'CANT_VERIFY', 'CLOSED'];
 
-export function isStatusBody(value: unknown): value is StatusBody {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
+const isBoard = (b: unknown) =>
+  has(b, str, 'stopId', 'name') &&
+  typeof b.live === 'boolean' &&
+  list(b.directions, (d) => has(d, str, 'key', 'label') && list(d.arrivals, (a) => has(a, num, 'at') && strOrNull(a.destination)));
+
+const isReport = (l: unknown) =>
+  has(l, str, 'lineId', 'lineName', 'tflSays', 'summary') &&
+  VERDICTS.includes(l.verdict as VerdictKind) &&
+  strOrNull(l.reason) &&
+  num(l.checkedAt) &&
+  strs(l.messages) &&
+  list(l.boards, isBoard) &&
+  list(l.evidence, (e) => has(e, str, 'stationName', 'directionKey', 'directionLabel'));
+
+export function isLinesBody(v: unknown): v is LinesBody {
   return (
-    typeof v.checkedAt === 'number' &&
-    typeof v.serverNow === 'number' &&
-    typeof v.stale === 'boolean' &&
-    typeof v.referenceGeneratedAt === 'string' &&
-    Array.isArray(v.lines) &&
-    v.lines.every((l: unknown) => {
-      if (typeof l !== 'object' || l === null) return false;
-      const x = l as Record<string, unknown>;
-      return (
-        typeof x.lineId === 'string' &&
-        typeof x.lineName === 'string' &&
-        typeof x.summary === 'string' &&
-        typeof x.tflSays === 'string' &&
-        VERDICTS.includes(x.verdict as VerdictKind) &&
-        Array.isArray(x.evidence) &&
-        Array.isArray(x.messages) &&
-        Array.isArray(x.boards)
-      );
-    })
+    obj(v) &&
+    live(v) &&
+    (v.checks === null || v.checks === undefined || (obj(v.checks) && obj(v.checks.lines))) &&
+    list(v.lines, (l) => has(l, str, 'lineId', 'lineName', 'tflSays', 'mode') && strOrNull(l.severity) && strs(l.messages))
   );
+}
+
+export function isLineBody(v: unknown): v is LineBody {
+  return obj(v) && live(v) && isReport(v);
+}
+
+export function isStatusBody(v: unknown): v is StatusBody {
+  return obj(v) && live(v) && str(v.referenceGeneratedAt) && list(v.lines, isReport);
+}
+
+export function isStationBody(v: unknown): v is StationBody {
+  return has(v, str, 'stationId', 'name') && live(v) && list(v.lines, (l) => has(l, str, 'lineId', 'lineName') && isBoard(l.board));
+}
+
+export function isBusRouteBody(v: unknown): v is BusRouteBody {
+  return (
+    has(v, str, 'routeId', 'name') &&
+    live(v) &&
+    typeof v.timesLive === 'boolean' &&
+    strs(v.statuses) &&
+    strs(v.messages) &&
+    list(
+      v.directions,
+      (d) => has(d, str, 'id', 'towards') && list(d.stops, (s) => has(s, str, 'id', 'name') && strOrNull(s.letter) && list(s.arrivals, num)),
+    )
+  );
+}
+
+export function isNearbyBody(v: unknown): v is NearbyBody {
+  return (
+    obj(v) &&
+    live(v) &&
+    list(
+      v.stops,
+      (s) =>
+        has(s, str, 'id', 'name') &&
+        num(s.distanceM) &&
+        strOrNull(s.letter) &&
+        strOrNull(s.towards) &&
+        list(s.buses, (b) => has(b, str, 'routeId', 'routeName') && strOrNull(b.destination) && list(b.times, num)),
+    )
+  );
+}
+
+export function isIndexBody(v: unknown): v is IndexBody {
+  return obj(v) && list(v.stations, (s) => has(s, str, 'id', 'name') && strs(s.lines)) && list(v.routes, (r) => has(r, str, 'id', 'name'));
+}
+
+export function isBusSearchBody(v: unknown): v is BusSearchBody {
+  return obj(v) && list(v.stops, (s) => has(s, str, 'id', 'name') && strOrNull(s.towards));
 }

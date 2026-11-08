@@ -10,7 +10,7 @@ import { formatDue, severityFromSays } from './view';
  * response (one request per minute while open; nothing when closed or idle).
  */
 export function BusRoutePage({ id, saved, idle }: { id: string; saved: ReturnType<typeof useSaved>; idle: boolean }) {
-  const live = useLive(`/api/bus/${id}`, isBusRouteBody, { paused: idle });
+  const live = useLive(`/api/bus/${id}`, isBusRouteBody, { paused: idle, saveAs: `tfl:bus:${id}` });
   const now = useServerNow(live.data, live.receivedAt);
   const data = live.data;
   const age = data && now !== null ? now - data.checkedAt : null;
@@ -24,7 +24,7 @@ export function BusRoutePage({ id, saved, idle }: { id: string; saved: ReturnTyp
       <PageHead title={data ? `Bus ${data.name}` : 'Bus route'}>
         {data && <SaveButton item={{ route, name: data.name, detail: 'Bus route' }} saved={saved.isSaved(route)} onToggle={saved.toggle} />}
       </PageHead>
-      <Updated age={age} stale={!!data?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
+      <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this route" />}
       {!data && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}

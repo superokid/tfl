@@ -161,3 +161,15 @@ Sample of prompts used (Claude Code), with corrections.
   never requests `/api/lines`; likely Home's request still in flight, or StrictMode's double fetch in dev.
 - "Yes, do it" → `/api/line/:id` now uses the ADR-006 windows: 30–90 s old served at once and refreshed
   in `waitUntil`; older still checked inline.
+
+## 2026-11-08: error handling and resilience
+- "make sure any kind of error handle correctly, and make sure the site is survive in a lot of condition just
+  show the data". Read every failure path in the Worker and client.
+- Worker: a failed D1 write threw away fresh data; a failed failure-mark threw; a corrupt row threw; a
+  station fetch that threw was unhandled; an unreadable bus status hid the whole route; TfL error bodies
+  were left unread. All degrade now, with tests.
+- Client: no error boundary, so one render error blanked the app; validators checked only top-level fields,
+  so a bad body or old device copy could crash a screen; the search index and bus stop search weren't
+  validated, and a failed stop search said "Searching…" forever. Station and bus pages now keep a device copy.
+- Checked in headless Chromium over CDP (the browser tools were down): API blocked, corrupt device copy,
+  forced render crash and recovery.

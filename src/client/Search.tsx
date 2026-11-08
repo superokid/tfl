@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import type { BusSearchBody, IndexBody } from '../shared/api';
+import { type BusSearchBody, type IndexBody, isBusSearchBody, isIndexBody } from '../shared/api';
 import { lineColour } from './lineColours';
 import { href } from './live';
 import { searchByName, searchRoutes } from './view';
@@ -8,7 +8,8 @@ import { searchByName, searchRoutes } from './view';
 let indexPromise: Promise<IndexBody | null> | null = null;
 export function loadIndex(): Promise<IndexBody | null> {
   indexPromise ??= fetch('/api/index')
-    .then((r) => (r.ok ? (r.json() as Promise<IndexBody>) : null))
+    .then((r) => (r.ok ? r.json() : null))
+    .then((b: unknown) => (isIndexBody(b) ? b : null))
     .catch(() => null)
     .then((b) => {
       if (!b) indexPromise = null; // retry next time
@@ -32,24 +33,25 @@ export function useIndex(enabled: boolean): IndexBody | null | undefined {
 }
 
 /** Bus stops by name: TfL search, from 3 characters, 400 ms after typing stops (cached a day server-side). */
-export function useBusStops(query: string): { stops: BusSearchBody['stops']; loading: boolean } {
+export function useBusStops(query: string): { stops: BusSearchBody['stops']; loading: boolean; failed: boolean } {
   const q = query.trim();
-  const [result, setResult] = useState<{ q: string; stops: BusSearchBody['stops'] }>({ q: '', stops: [] });
+  const [result, setResult] = useState<{ q: string; stops: BusSearchBody['stops']; failed: boolean }>({ q: '', stops: [], failed: false });
   useEffect(() => {
     if (q.length < 3) return;
     const controller = new AbortController();
     const t = setTimeout(() => {
       fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
-        .then((r) => (r.ok ? (r.json() as Promise<BusSearchBody>) : null))
-        .then((b) => setResult({ q, stops: b?.stops ?? [] }))
-        .catch(() => {});
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b: unknown) => setResult(isBusSearchBody(b) ? { q, stops: b.stops, failed: false } : { q, stops: [], failed: true }))
+        .catch(() => !controller.signal.aborted && setResult({ q, stops: [], failed: true }));
     }, 400);
     return () => {
       clearTimeout(t);
       controller.abort();
     };
   }, [q]);
-  return q.length < 3 ? { stops: [], loading: false } : { stops: result.q === q ? result.stops : [], loading: result.q !== q };
+  if (q.length < 3) return { stops: [], loading: false, failed: false };
+  return result.q === q ? { ...result, loading: false } : { stops: [], loading: true, failed: false };
 }
 
 /** One search box for stations, bus routes and bus stops. */
@@ -63,7 +65,7 @@ export function Search() {
   const stations = useMemo(() => (index && q ? searchByName(index.stations, q, 5) : []), [index, q]);
   const routes = useMemo(() => (index && q ? searchRoutes(index.routes, q, 6) : []), [index, q]);
   const routeLike = routes.length > 0 && /\d/.test(q);
-  const { stops, loading: stopsLoading } = useBusStops(routeLike ? '' : q);
+  const { stops, loading: stopsLoading, failed: stopsFailed } = useBusStops(routeLike ? '' : q);
 
   useEffect(() => {
     const clear = () => setQuery('');
@@ -79,7 +81,7 @@ export function Search() {
         : stops[0]
           ? href({ page: 'station', id: stops[0].id })
           : null;
-  const nothing = q && index && !stopsLoading && stations.length + routes.length + stops.length === 0;
+  const nothing = q && index && !stopsLoading && !stopsFailed && stations.length + routes.length + stops.length === 0;
 
   return (
     <div className="search" role="search">
@@ -106,7 +108,8 @@ export function Search() {
       />
       {q && (
         <div id={`${id}-r`} className="results" aria-live="polite">
-          {!index && <p className="muted small">Loading…</p>}
+          {index === undefined && <p className="muted small">Loading…</p>}
+          {index === null && <p className="muted small">Can't load stations and routes right now.</p>}
           {routeLike && <ResultGroup title="Bus routes">{routes.map((r) => <Result key={r.id} to={href({ page: 'bus', id: r.id })} badge={r.name} label={`Route ${r.name}`} />)}</ResultGroup>}
           {stations.length > 0 && (
             <ResultGroup title="Stations">
@@ -124,6 +127,7 @@ export function Search() {
               )}
             </ResultGroup>
           )}
+          {stopsFailed && !routeLike && <p className="muted small">Bus stop search isn't working right now.</p>}
           {nothing && <p className="muted small">Nothing matches "{q}".</p>}
         </div>
       )}

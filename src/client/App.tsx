@@ -5,6 +5,7 @@ import { useIdle, useRoute } from './live';
 import { useSaved } from './saved';
 import { Search } from './Search';
 import { StationPage } from './StationPage';
+import { Boundary } from './ui';
 
 /**
  * Passenger-first layout: one search box (stations, bus stops, routes), saved favourites, and per-mode
@@ -24,12 +25,17 @@ export function App() {
         </a>
       </header>
 
-      <Search />
+      <Boundary>
+        <Search />
+      </Boundary>
 
-      {route.page === 'home' && <Home saved={saved.items} idle={idle} />}
-      {route.page === 'line' && <LinePage key={route.id} id={route.id} saved={saved} idle={idle} />}
-      {route.page === 'station' && <StationPage key={route.id} id={route.id} saved={saved} idle={idle} />}
-      {route.page === 'bus' && <BusRoutePage key={route.id} id={route.id} saved={saved} idle={idle} />}
+      {/* Keyed by page: leaving a screen that failed to render clears the error. */}
+      <Boundary key={`${route.page}:${'id' in route ? route.id : ''}`}>
+        {route.page === 'home' && <Home saved={saved.items} idle={idle} />}
+        {route.page === 'line' && <LinePage key={route.id} id={route.id} saved={saved} idle={idle} />}
+        {route.page === 'station' && <StationPage key={route.id} id={route.id} saved={saved} idle={idle} />}
+        {route.page === 'bus' && <BusRoutePage key={route.id} id={route.id} saved={saved} idle={idle} />}
+      </Boundary>
 
       <footer className="small muted">
         <p>

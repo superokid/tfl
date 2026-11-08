@@ -4,6 +4,7 @@
  * visible, and stops after 10 min without interaction.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { type LoadFailure, loadErrorText } from './view';
 
 export const REFRESH_MS = 60_000;
 export const IDLE_MS = 10 * 60_000;
@@ -100,13 +101,19 @@ export function useLive<T>(
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
-    const timer = setTimeout(() => controller.abort(), 12_000);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 12_000);
+    let failure: LoadFailure = 'network';
     try {
       const res = await fetch(url, { signal: controller.signal });
       const body: unknown = await res.json().catch(() => null);
-      if (!res.ok || !valid(body)) throw new Error(
-          res.status === 404 ? 'Not found' : res.status === 429 ? 'Too many requests. Try again in a minute.' : res.ok ? 'Unexpected response' : `HTTP ${res.status}`,
-        );
+      if (!res.ok || !valid(body)) {
+        failure = res.ok ? 'invalid' : res.status;
+        throw new Error(String(failure));
+      }
       if (saveAs) {
         try {
           localStorage.setItem(saveAs, JSON.stringify({ data: body, savedAt: Date.now() }));
@@ -115,9 +122,9 @@ export function useLive<T>(
         }
       }
       setState({ data: body, receivedAt: Date.now(), source: 'live', error: null, loading: false });
-    } catch (err) {
-      if (controller.signal.aborted && inFlight.current !== controller) return; // superseded
-      const message = !navigator.onLine ? "You're offline" : err instanceof Error && err.name !== 'AbortError' ? err.message : 'Timed out';
+    } catch {
+      if (controller.signal.aborted && !timedOut) return; // superseded or unmounted
+      const message = loadErrorText(!navigator.onLine ? 'offline' : timedOut ? 'timeout' : failure);
       setState((s) => ({ ...s, source: s.data ? 'device' : null, error: message, loading: false }));
     } finally {
       clearTimeout(timer);

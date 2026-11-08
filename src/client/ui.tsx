@@ -1,5 +1,5 @@
 /** Small shared pieces used by every page. */
-import { type ReactNode, useEffect } from 'react';
+import { Component, Fragment, type ReactNode, useEffect } from 'react';
 import type { SavedItem } from './saved';
 import { formatAge, statusTone, type Tone } from './view';
 import type { Expected } from '../shared/rules/types';
@@ -50,6 +50,41 @@ export function StaleBanner({ show, deviceCopy, age, error }: { show: boolean; d
         : `TfL isn't responding. Showing information from ${formatAge(age)}.`}
     </div>
   );
+}
+
+/** Copies of live data kept on this device (not saved items or settings). */
+function clearDeviceCopies() {
+  try {
+    for (const k of Object.keys(localStorage)) if (/^tfl:(lines|line:|station:|bus:)/.test(k)) localStorage.removeItem(k);
+  } catch {
+    // Storage blocked: nothing to clear.
+  }
+}
+
+/**
+ * Catches a render error so one bad screen never blanks the app. A device copy may be what broke it, so
+ * those are dropped; "Try again" then loads fresh from the network.
+ */
+export class Boundary extends Component<{ children: ReactNode }, { failed: boolean; attempt: number }> {
+  override state = { failed: false, attempt: 0 };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  override componentDidCatch(err: unknown) {
+    console.error('render failed:', err);
+    clearDeviceCopies();
+  }
+  override render() {
+    if (!this.state.failed) return <Fragment key={this.state.attempt}>{this.props.children}</Fragment>;
+    return (
+      <div className="card empty" role="alert">
+        <p>Something went wrong showing this.</p>
+        <button className="button" onClick={() => this.setState((s) => ({ failed: false, attempt: s.attempt + 1 }))}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 }
 
 export function LoadError({ error, onRetry, what }: { error: string | null; onRetry: () => void; what: string }) {

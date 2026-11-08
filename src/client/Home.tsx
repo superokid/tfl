@@ -130,7 +130,7 @@ function NearNote({ where, index, near, tabLabel }: { where: Where; index: unkno
       <p className="small muted near-note">
         {where.state === 'locating' || (at && index === undefined)
           ? 'Finding stations near you…'
-          : `${at && index ? `No ${tabLabel} station within ${formatDistance(NEAR_LINES.farM)}` : "Couldn't get your location"}, so every line is shown.`}
+          : `${at && index ? `No ${tabLabel} station within ${formatDistance(NEAR_LINES.farM)}` : at ? "Couldn't load stations" : "Couldn't get your location"}, so every line is shown.`}
       </p>
     );
   return (

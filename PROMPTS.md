@@ -26,3 +26,10 @@ Sample of prompts used (Claude Code), with corrections.
   Cloudflare credentials. Deploy is `bun run deploy` from a green `main`, followed by a manual smoke test.
 - The first CI run caught a gitleaks false positive on the test's fake key. Fixed by making the value
   low-entropy instead of disabling the rule.
+
+## 2026-11-08: Phase 2, rules engine
+- "continue phase2": Phase 1 (fixtures) wasn't done, so the engine takes a typed domain model instead of raw
+  TfL JSON. Parsing gets tested against real fixtures later, and the rules don't depend on TfL field names.
+- Tests written first (87). One failure was my own test data; fixing it exposed a real case worth a rule:
+  a train in 1 min and then nothing until 40 min must count as a long wait, even past the 30 min window.
+- "you allowed to merge each step", then "push still not allowed, only merge": merge locally, ask before push.

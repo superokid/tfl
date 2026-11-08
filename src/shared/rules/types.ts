@@ -1,0 +1,129 @@
+/**
+ * Domain model for the rules engine. The engine never sees raw TfL JSON: a parser at the boundary
+ * (Phase 1/4, built against real fixtures) turns TfL responses into these types.
+ * All times are epoch milliseconds; all durations are minutes.
+ */
+import type { Mode } from '../config';
+
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Sunday, as Date#getDay
+
+/** One official status line from TfL, as published. */
+export interface StatusInput {
+  /** TfL's `statusSeverityDescription`, e.g. "Good Service", "Part Suspended". */
+  description: string;
+  /** TfL's validity periods. Empty = valid now (TfL omits them for routine statuses). `isNow` is ignored. */
+  validityPeriods: { from: number; to: number }[];
+  /** NaPTAN ids of stops the disruption covers (`?detail=true`), when TfL lists them. */
+  affectedStopIds: string[];
+}
+
+export interface Prediction {
+  vehicleId: string;
+  /** Stable key used to match reference data: TfL `direction`, else derived from `platformName`. */
+  directionKey: string;
+  /** Passenger wording, e.g. "southbound", "eastbound", "towards Stratford". */
+  directionLabel: string;
+  expectedArrival: number;
+  /** TfL `timing.read`: when the prediction was produced. */
+  timingRead: number;
+}
+
+export type ArrivalsFailure = 'failed' | 'invalid' | 'budget';
+
+export type StationArrivals =
+  | { ok: true; predictions: Prediction[] }
+  | { ok: false; failure: ArrivalsFailure };
+
+export interface ServiceBand {
+  /** Minutes since local midnight of the service day; may exceed 1440 for after-midnight service. */
+  fromMin: number;
+  toMin: number;
+  normalGapMin: number;
+}
+
+export interface ServiceDay {
+  /** First and last journey, minutes since local midnight of the service day (last may be ≥ 1440). */
+  firstMin: number;
+  lastMin: number;
+  bands: ServiceBand[];
+}
+
+/** Timetable-derived reference for one direction at one check station. */
+export interface DirectionRef {
+  directionKey: string;
+  /** Service day by weekday; a missing weekday means no service that day. */
+  days: Partial<Record<Weekday, ServiceDay>>;
+}
+
+export interface CheckStation {
+  stopId: string;
+  name: string;
+  /** Empty when the timetable couldn't be derived: the engine uses the per-mode fallback gap. */
+  directions: DirectionRef[];
+  arrivals: StationArrivals;
+}
+
+export interface LineInput {
+  lineId: string;
+  lineName: string;
+  mode: Mode;
+  statuses: StatusInput[];
+  /** Usually 2. Empty for status-only lines (e.g. Cable Car, which has no predictions). */
+  stations: CheckStation[];
+}
+
+export type Expected = 'NORMAL' | 'MINOR' | 'DEGRADED' | 'PARTIAL' | 'NONE' | 'CLOSED';
+
+export type VerdictKind = 'HIDDEN_DISRUPTION' | 'STALE_ALERT' | 'MATCH' | 'CANT_VERIFY' | 'CLOSED';
+
+export type VerdictReason =
+  // CANT_VERIFY
+  | 'status-only'
+  | 'unknown-status'
+  | 'partial-unlocated'
+  | 'insufficient-data'
+  | 'fallback-gap'
+  // CLOSED
+  | 'planned-closure'
+  | 'outside-hours';
+
+export type DirectionIssue =
+  | 'failed'
+  | 'invalid'
+  | 'budget'
+  | 'no-predictions'
+  | 'frozen'
+  | 'short-horizon'
+  | 'outside-hours'
+  | 'day-edge';
+
+export interface DirectionEvidence {
+  stopId: string;
+  stationName: string;
+  directionKey: string;
+  directionLabel: string;
+  normalGapMin: number;
+  normalGapIsFallback: boolean;
+  thresholdMin: number;
+  /** Largest gap seen inside the window, or null if the direction is unusable. */
+  observedGapMin: number | null;
+  /** 'next' = now → first arrival; 'between' = two consecutive arrivals. */
+  gapKind: 'next' | 'between' | null;
+  horizonMin: number | null;
+  usable: boolean;
+  issue: DirectionIssue | null;
+}
+
+export interface LineVerdict {
+  lineId: string;
+  lineName: string;
+  mode: Mode;
+  verdict: VerdictKind;
+  reason: VerdictReason | null;
+  /** The official status as published, e.g. "Good Service" or "Severe Delays, Part Suspended". */
+  tflSays: string;
+  /** One plain-English sentence for the card. */
+  summary: string;
+  evidence: DirectionEvidence[];
+  checkedAt: number;
+}

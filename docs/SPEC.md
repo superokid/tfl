@@ -92,6 +92,8 @@ D1 snapshot (shared, outage fallback) · HTTP cache · `localStorage` (last good
 ## 5. Rules
 
 Pure function of (status, arrivals, reference data, `now`). No I/O, no `Date.now()`, `Europe/London`.
+Code: `src/shared/rules/`. Input is the domain model in `types.ts`, not raw TfL JSON; parsing TfL into
+it happens at the boundary (Phase 4), tested against real fixtures.
 All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`.
 
 ### 5.1 Status → expected service (map by description; confirm with `/Line/Meta/Severity`)
@@ -123,6 +125,12 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 - **Usable direction:** ≥ 1 prediction, and horizon ≥ 2 × normal or a gap over the threshold was seen.
   No predictions = unusable.
 - **Day edges:** within 20 min of the first or last journey → `CANT_VERIFY`.
+- **Also decided in Phase 2:**
+  - Arrivals already due count as now.
+  - If later arrivals exist beyond the window, the wait from the last in-window arrival to the window end
+    counts as a gap.
+  - A station in a `PARTIAL` status's affected stops is expected to have no service (`NONE`).
+  - A direction with predictions but no timetable uses the per-mode fallback gap, with hours assumed open.
 
 ### 5.3 Verdicts
 

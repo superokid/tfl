@@ -45,7 +45,7 @@ function NearYou({ idle }: { idle: boolean }) {
     <section className="near" aria-label="Bus stops near you">
       <div className="near-top">
         <h2>Near you</h2>
-        <button type="button" className="button" onClick={locate} disabled={where.state === 'locating'}>
+        <button type="button" className="button button-sm" onClick={locate} disabled={where.state === 'locating'}>
           {where.state === 'at' ? 'Update location' : 'Use my location'}
         </button>
       </div>

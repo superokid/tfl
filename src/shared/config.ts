@@ -90,6 +90,13 @@ export const LIVE = {
   stationKeepMs: 3_600_000,
 } as const;
 
+/** Browser side of the free-tier budget (ADR-009). */
+export const CLIENT = {
+  /** Don't ask for the same URL again sooner than this, except on a tap of Refresh: the server's
+   * snapshots and edge caches are fresh for 30 s, so an earlier request returns the same data. */
+  minRefetchGapMs: 30_000,
+} as const;
+
 /**
  * "Lines near me" on the rail tabs (ADR-013): worked out on the phone from station positions in the index,
  * so the position is never sent. Straight-line distance.

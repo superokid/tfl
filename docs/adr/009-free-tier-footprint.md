@@ -13,6 +13,8 @@ Worker.
 | TfL budget table | Dropped (migration 0002): the lease already caps refreshes |
 | Station lookups | 30 s edge cache + in-memory per-instance limit (60 calls/min); no D1 writes |
 | Client polling | Every 60 s while visible; stops after 10 min without interaction |
+| Client refetch gap | No request for a URL fetched < 30 s ago (tab switch, back to a screen); Refresh still fetches |
+| Workers Logs | Errors only, no per-request invocation log (account-wide allowance); query strings redacted |
 
 ## Consequences
 - Worst case, someone watching 24 h: ≤ 5,760 D1 writes/day (~6% of the shared limit); 0 when idle.

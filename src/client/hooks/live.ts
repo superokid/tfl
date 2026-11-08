@@ -1,9 +1,11 @@
 /**
  * Shared client plumbing: hash routing, idle detection, one "live data" hook for every screen, and the
  * server clock. Free-tier friendly (ADR-009/011): a screen fetches only its own data, every 60 s while
- * visible, and stops after 10 min without interaction.
+ * visible, and stops after 10 min without interaction. Nothing is refetched within 30 s unless the user
+ * taps Refresh (see lib/recent.ts).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { recall, remember } from '../lib/recent';
 import { type LoadFailure, loadErrorText } from '../lib/view';
 
 export const REFRESH_MS = 60_000;
@@ -63,6 +65,9 @@ export function useLive<T>(
 ): Live<T> {
   const { paused = false, saveAs, poll = true } = opts;
   const [state, setState] = useState<Omit<Live<T>, 'reload'>>(() => {
+    // Back on a screen seen moments ago: show that result, no request.
+    const hit = url ? recall(url, valid, Date.now()) : null;
+    if (hit) return { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false };
     const saved = readSaved(saveAs, valid);
     return saved
       ? { data: saved.data, receivedAt: saved.savedAt, source: 'device', error: null, loading: true }
@@ -70,8 +75,18 @@ export function useLive<T>(
   });
   const inFlight = useRef<AbortController | null>(null);
 
-  const load = useCallback(async () => {
+  /** `force`: the user tapped Refresh. Otherwise a result under 30 s old is reused. */
+  const load = useCallback(async (force = false) => {
     if (!url) return;
+    const hit = force ? null : recall(url, valid, Date.now());
+    if (hit) {
+      setState((s) =>
+        s.source === 'live' && s.receivedAt === hit.at
+          ? s
+          : { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false },
+      );
+      return;
+    }
     inFlight.current?.abort();
     const controller = new AbortController();
     inFlight.current = controller;
@@ -88,14 +103,16 @@ export function useLive<T>(
         failure = res.ok ? 'invalid' : res.status;
         throw new Error(String(failure));
       }
+      const at = Date.now();
+      remember(url, body, at);
       if (saveAs) {
         try {
-          localStorage.setItem(saveAs, JSON.stringify({ data: body, savedAt: Date.now() }));
+          localStorage.setItem(saveAs, JSON.stringify({ data: body, savedAt: at }));
         } catch {
           // Storage full or blocked: the app works without it.
         }
       }
-      setState({ data: body, receivedAt: Date.now(), source: 'live', error: null, loading: false });
+      setState({ data: body, receivedAt: at, source: 'live', error: null, loading: false });
     } catch {
       if (controller.signal.aborted && !timedOut) return; // superseded or unmounted
       const message = loadErrorText(!navigator.onLine ? 'offline' : timedOut ? 'timeout' : failure);
@@ -130,7 +147,7 @@ export function useLive<T>(
 
   const reload = useCallback(() => {
     setState((s) => ({ ...s, loading: true }));
-    void load();
+    void load(true);
   }, [load]);
 
   return { ...state, reload };

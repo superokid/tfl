@@ -168,7 +168,7 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 
 ### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))
 Refresh ≤ every 30 s, 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client
-polls every 60 s and stops after 10 min idle.
+polls every 60 s, never refetches within 30 s unless the user taps Refresh, and stops after 10 min idle.
 
 ## 7. Tests and CI
 

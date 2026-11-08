@@ -1,6 +1,7 @@
 /** Response contracts shared by the Worker and the client. */
 import type { StationBoard } from './boards';
-import type { LineVerdict, VerdictKind } from './rules/types';
+import type { Mode } from './config';
+import type { Expected, LineVerdict, VerdictKind, VerdictReason } from './rules/types';
 
 export interface HealthBody {
   status: 'ok';
@@ -21,8 +22,76 @@ export interface LineReport extends LineVerdict {
   boards: StationBoard[];
 }
 
-/** Bump when the Snapshot shape changes: a stored snapshot of another version is ignored and refreshed. */
+/** Bump when a stored shape changes: a stored snapshot of another version is ignored and refreshed. */
 export const SNAPSHOT_VERSION = 3;
+export const LINES_VERSION = 1;
+
+/** One line on the home screen: TfL's status only (ADR-011). */
+export interface LineStatus {
+  lineId: string;
+  lineName: string;
+  mode: Mode;
+  /** TfL's status as published, e.g. "Good Service" or "Severe Delays, Part Suspended". */
+  tflSays: string;
+  /** How bad TfL says it is (for colour and order); null if a status isn't recognised. */
+  severity: Expected | null;
+  messages: string[];
+  /** False for lines with no live predictions (Cable Car): never checked. */
+  checkable: boolean;
+}
+
+export interface LinesSnapshot {
+  version: number;
+  checkedAt: number;
+  referenceGeneratedAt: string;
+  lines: LineStatus[];
+}
+
+/** The latest "Check all lines" result, if recent: verdicts only. */
+export interface CheckSummary {
+  checkedAt: number;
+  lines: Record<string, { verdict: VerdictKind; reason: VerdictReason | null; summary: string }>;
+}
+
+/** GET /api/lines (home screen). */
+export interface LinesBody extends LinesSnapshot {
+  serverNow: number;
+  stale: boolean;
+  checks: CheckSummary | null;
+}
+
+/** GET /api/line/:id (line screen). */
+export interface LineBody extends LineReport {
+  serverNow: number;
+  stale: boolean;
+}
+
+export function isLinesBody(value: unknown): value is LinesBody {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.checkedAt === 'number' &&
+    typeof v.serverNow === 'number' &&
+    typeof v.stale === 'boolean' &&
+    Array.isArray(v.lines) &&
+    v.lines.every((l: unknown) => {
+      const x = l as Record<string, unknown> | null;
+      return !!x && typeof x.lineId === 'string' && typeof x.lineName === 'string' && typeof x.tflSays === 'string' && Array.isArray(x.messages);
+    })
+  );
+}
+
+export function isLineBody(value: unknown): value is LineBody {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.lineId === 'string' &&
+    typeof v.serverNow === 'number' &&
+    VERDICTS.includes(v.verdict as VerdictKind) &&
+    Array.isArray(v.boards) &&
+    Array.isArray(v.evidence)
+  );
+}
 
 /** What is stored in D1 and served by /api/status. */
 export interface Snapshot {

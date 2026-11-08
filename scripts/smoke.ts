@@ -3,7 +3,7 @@
  * Usage: bun scripts/smoke.ts https://<worker>.workers.dev
  * Runs after every deploy and every 6 h in CI (SPEC §7).
  */
-import { isHealthBody, isStatusBody } from '../src/shared/api.ts';
+import { isHealthBody, isLineBody, isLinesBody } from '../src/shared/api.ts';
 
 const base = process.argv[2] ?? process.env.LIVE_URL;
 if (!base) {
@@ -26,6 +26,10 @@ async function check(path: string, validate: (body: unknown) => boolean): Promis
   }
 }
 
-const results = [await check('/api/health', isHealthBody), await check('/api/status', isStatusBody)];
+const results = [
+  await check('/api/health', isHealthBody),
+  await check('/api/lines', isLinesBody),
+  await check('/api/line/victoria', isLineBody),
+];
 
 process.exit(results.every(Boolean) ? 0 : 1);

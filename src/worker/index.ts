@@ -1,11 +1,12 @@
 import type { ErrorBody, HealthBody } from '../shared/api';
-import type { IndexBody } from '../shared/api';
+import { LINES_VERSION, SNAPSHOT_VERSION, type IndexBody, type LinesSnapshot, type Snapshot } from '../shared/api';
 import { BUSES, RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
 import { EdgeJsonCache, handleBusRoute, handleBusSearch } from './bus';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
 import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
-import { handleStatus, handleStatusWithoutStore } from './status';
+import { handleLine } from './line';
+import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
 
@@ -33,24 +34,40 @@ export default {
       return json(body, { headers: { 'Cache-Control': 'no-store' } });
     }
 
-    if (url.pathname === '/api/status') {
+    // Home screen: statuses only. Check-all: only when the user taps it (ADR-011).
+    if (url.pathname === '/api/lines' || url.pathname === '/api/checks') {
       if (!env.TFL_APP_KEY) {
         return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
       }
       const now = Date.now();
       const tfl = () => createTflClient(env.TFL_APP_KEY);
+      const waitUntil = (p: Promise<unknown>) => ctx.waitUntil(p);
+      const checks = new D1Store<Snapshot>(env.DB, 'checks', SNAPSHOT_VERSION);
       try {
-        return await handleStatus({
-          store: new D1Store(env.DB),
-          tfl,
-          reference: RAIL_REFERENCE,
-          now,
-          waitUntil: (p) => ctx.waitUntil(p),
-        });
+        return url.pathname === '/api/lines'
+          ? await handleLines({ store: new D1Store<LinesSnapshot>(env.DB, 'lines', LINES_VERSION), checks, tfl, reference: RAIL_REFERENCE, now, waitUntil })
+          : await handleStatus({ store: checks, tfl, reference: RAIL_REFERENCE, now, waitUntil });
       } catch (err) {
         console.error('store unavailable, calling TfL directly:', redact(err instanceof Error ? err.message : String(err)));
-        return handleStatusWithoutStore(tfl, RAIL_REFERENCE, now);
+        return url.pathname === '/api/lines'
+          ? handleLinesWithoutStore(tfl, RAIL_REFERENCE, now)
+          : handleStatusWithoutStore(tfl, RAIL_REFERENCE, now);
       }
+    }
+
+    const lineMatch = /^\/api\/line\/([a-z-]{2,30})$/.exec(url.pathname);
+    if (lineMatch) {
+      if (!env.TFL_APP_KEY) {
+        return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      }
+      return handleLine({
+        lineId: lineMatch[1]!,
+        reference: RAIL_REFERENCE,
+        cache: new EdgeJsonCache(),
+        limiter: onDemandLimiter,
+        tfl: () => createTflClient(env.TFL_APP_KEY),
+        now: Date.now(),
+      });
     }
 
     if (url.pathname === '/api/index') {

@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isStatusBody, type Snapshot, type StatusBody } from '../../src/shared/api';
+import { isLineBody, isLinesBody, isStatusBody, LINES_VERSION, type LinesBody, type LinesSnapshot, type Snapshot, type StatusBody } from '../../src/shared/api';
+import { MemoryJsonCache } from '../../src/worker/bus';
+import { handleLine } from '../../src/worker/line';
+import { CallLimiter } from '../../src/worker/station';
 import { LIVE } from '../../src/shared/config';
 import { RAIL_REFERENCE } from '../../src/shared/reference/load';
 import { buildSnapshot } from '../../src/worker/refresh';
-import { handleStatus, handleStatusWithoutStore, plannedCalls, resetMemoForTests, type StatusDeps } from '../../src/worker/status';
+import { handleLines, handleStatus, handleStatusWithoutStore, plannedCalls, resetMemoForTests, type StatusDeps } from '../../src/worker/status';
 import { MemoryStore } from '../../src/worker/store';
 import { createTflClient } from '../../src/worker/tfl/client';
 
@@ -45,7 +48,7 @@ function fakeTfl(behaviour: Behaviour = 'ok') {
   };
 }
 
-function deps(store: MemoryStore, tfl: ReturnType<typeof fakeTfl>, now = NOW) {
+function deps(store: MemoryStore<Snapshot>, tfl: ReturnType<typeof fakeTfl>, now = NOW) {
   const background: Promise<unknown>[] = [];
   const d: StatusDeps = { store, tfl: tfl.client, reference: RAIL_REFERENCE, now, waitUntil: (p) => background.push(p) };
   return { d, background };
@@ -57,8 +60,8 @@ async function body(res: Response): Promise<StatusBody> {
   return b as StatusBody;
 }
 
-async function seeded(at: number): Promise<MemoryStore> {
-  const store = new MemoryStore();
+async function seeded(at: number): Promise<MemoryStore<Snapshot>> {
+  const store = new MemoryStore<Snapshot>();
   store.snapshot = await buildSnapshot(fakeTfl().client(), RAIL_REFERENCE, at, null);
   return store;
 }
@@ -68,7 +71,7 @@ describe('/api/status data layer (ADR-006)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('first request with no snapshot refreshes inline and stores it', async () => {
-    const store = new MemoryStore();
+    const store = new MemoryStore<Snapshot>();
     const tfl = fakeTfl();
     const res = await handleStatus(deps(store, tfl).d);
     const b = await body(res);
@@ -140,7 +143,7 @@ describe('/api/status data layer (ADR-006)', () => {
   });
 
   it('no snapshot and TfL down: 503, not cached', async () => {
-    const res = await handleStatus(deps(new MemoryStore(), fakeTfl('down')).d);
+    const res = await handleStatus(deps(new MemoryStore<Snapshot>(), fakeTfl('down')).d);
     expect(res.status).toBe(503);
     expect(res.headers.get('Cache-Control')).toBe('no-store');
   });
@@ -157,7 +160,7 @@ describe('/api/status data layer (ADR-006)', () => {
   });
 
   it('free-tier footprint: heavy traffic for 10 min → ≤ 1 refresh per 30 s, 2 D1 writes each', async () => {
-    const store = new MemoryStore();
+    const store = new MemoryStore<Snapshot>();
     let refreshes = 0;
     // 600 requests, one per second, from many visitors.
     for (let t = 0; t < 600; t++) {
@@ -173,7 +176,7 @@ describe('/api/status data layer (ADR-006)', () => {
 
   it('a refresh stays within the subrequest plan and never has more than 6 calls in flight', async () => {
     const tfl = fakeTfl();
-    await handleStatus(deps(new MemoryStore(), tfl).d);
+    await handleStatus(deps(new MemoryStore<Snapshot>(), tfl).d);
     expect(tfl.seen.length).toBeLessThanOrEqual(plannedCalls(RAIL_REFERENCE));
     expect(tfl.seen.length).toBeLessThanOrEqual(LIVE.maxCallsPerRefresh);
     expect(tfl.maxInFlight).toBeLessThanOrEqual(LIVE.concurrency);
@@ -218,5 +221,48 @@ describe('snapshot from live fixtures', () => {
     expect(byId.get('bakerloo')?.messages).toHaveLength(1);
     expect(byId.get('bakerloo')?.messages[0]).toMatch(/^No service between Queen's Park/);
     expect(byId.get('victoria')?.boards).toHaveLength(2);
+  });
+});
+
+describe('fetch only what the screen needs (ADR-011)', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => vi.restoreAllMocks());
+
+  it('home screen: statuses only, at most 2 TfL calls, no arrivals', async () => {
+    const tfl = fakeTfl();
+    const store = new MemoryStore<LinesSnapshot>(LINES_VERSION);
+    const res = await handleLines({ store, checks: null, tfl: tfl.client, reference: RAIL_REFERENCE, now: NOW, waitUntil: () => {} });
+    const b: unknown = await res.json();
+    expect(isLinesBody(b)).toBe(true);
+    expect(tfl.seen.length).toBeLessThanOrEqual(2);
+    expect(tfl.seen.some((u) => u.includes('/Arrivals'))).toBe(false);
+    const lines = (b as LinesBody).lines;
+    expect(lines.find((l) => l.lineId === 'bakerloo')).toMatchObject({ severity: 'PARTIAL', tflSays: 'Severe Delays, Part Suspended' });
+    expect(lines.find((l) => l.lineId === 'victoria')?.severity).toBe('NORMAL');
+    expect(lines.find((l) => l.lineId === 'london-cable-car')?.checkable).toBe(false);
+  });
+
+  it('home screen shows a recent check-all result, never an old one', async () => {
+    const checks = await seeded(NOW - 60_000);
+    const store = new MemoryStore<LinesSnapshot>(LINES_VERSION);
+    const run = async (now: number) =>
+      (await (await handleLines({ store, checks, tfl: fakeTfl().client, reference: RAIL_REFERENCE, now, waitUntil: () => {} })).json()) as LinesBody;
+    expect((await run(NOW)).checks?.lines.victoria).toBeDefined();
+    expect((await run(NOW + 11 * 60_000)).checks).toBeNull();
+  });
+
+  it('line screen: one line, its own stops only, cached and shared', async () => {
+    const tfl = fakeTfl();
+    const cache = new MemoryJsonCache();
+    const limiter = new CallLimiter(60);
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now: NOW };
+    const results = await Promise.all(Array.from({ length: 5 }, () => handleLine(d)));
+    const b: unknown = await results[0]!.json();
+    expect(isLineBody(b)).toBe(true);
+    expect(tfl.seen.length).toBeLessThanOrEqual(1 + 2 + 1);
+    expect(tfl.seen.filter((u) => u.includes('/Arrivals'))).toHaveLength(2);
+    await handleLine({ ...d, now: NOW + 5_000 });
+    expect(tfl.seen.filter((u) => u.includes('/Arrivals'))).toHaveLength(2);
+    expect((await handleLine({ ...d, lineId: 'nope' })).status).toBe(404);
   });
 });

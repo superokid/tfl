@@ -58,6 +58,12 @@ export class CallLimiter {
 
 export const stationLimiter = new CallLimiter(LIVE.stationCallsPerMinute);
 
+/**
+ * Requests for the same station while a fetch is running share it (per Worker instance), so a cache
+ * expiry under load causes one TfL fetch, not a stampede. Found by the load test (scripts/load.ts).
+ */
+const inFlight = new Map<string, Promise<StationBody | null>>();
+
 export interface StationDeps {
   id: string;
   stations: StationsFile;
@@ -111,11 +117,19 @@ export async function handleStation(deps: StationDeps): Promise<Response> {
   const cached = await cache.get(id).catch(() => null);
   if (cached && now - cached.checkedAt < LIVE.stationFreshMs) return respond(cached, now, false);
 
-  const fresh = limiter.tryTake(now, station.stopIds.length) ? await fetchStation(station, deps) : null;
-  if (fresh) {
-    await cache.put(id, fresh).catch(() => {});
-    return respond(fresh, now, false);
+  let pending = inFlight.get(id);
+  if (!pending) {
+    pending = limiter.tryTake(now, station.stopIds.length)
+      ? fetchStation(station, deps).then(async (fresh) => {
+          if (fresh) await cache.put(id, fresh).catch(() => {});
+          return fresh;
+        })
+      : Promise.resolve(null);
+    inFlight.set(id, pending);
+    void pending.finally(() => inFlight.delete(id));
   }
+  const fresh = await pending;
+  if (fresh) return respond(fresh, now, false);
   return cached
     ? respond(cached, now, true)
     : json({ error: 'tfl_unavailable' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '5' } });

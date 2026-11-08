@@ -47,6 +47,26 @@ describe('GET /api/health', () => {
   });
 });
 
+describe('security headers', () => {
+  it('every API response is locked down', async () => {
+    for (const path of ['/api/health', '/api/nope']) {
+      const res = await call(path);
+      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+      expect(res.headers.get('Content-Security-Policy')).toBe("default-src 'none'; frame-ancestors 'none'");
+      expect(res.headers.get('X-Frame-Options')).toBe('DENY');
+      expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+    }
+  });
+
+  it('the static site ships a strict CSP: scripts only from self, no inline scripts', async () => {
+    const { readFileSync } = await import('node:fs');
+    const headers = readFileSync('public/_headers', 'utf8');
+    expect(headers).toContain("script-src 'self'");
+    expect(headers).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(headers).toContain("frame-ancestors 'none'");
+  });
+});
+
 describe('other routes', () => {
   it('returns JSON 404 for unknown API paths', async () => {
     const res = await call('/api/nope');

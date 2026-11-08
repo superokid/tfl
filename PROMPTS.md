@@ -86,3 +86,8 @@ Sample of prompts used (Claude Code), with corrections.
 - Live Stratford page: TfL's own `direction` put eastbound Gidea Park trains with Paddington ones → boards
   group by physical platform. The Jubilee terminus listed only "Stratford" → terminating trains are marked
   and merged.
+
+## 2026-11-08: Phase 7, hardening
+- "continue next phase": headers, Lighthouse, load test, spot-checks, all on the production build.
+- The load test found a station-cache stampede (38 TfL fetches instead of ~9, 5 errors). Fixed by sharing one
+  in-flight fetch per station; re-run: 0 errors, 9 fetches.

@@ -92,6 +92,15 @@ describe('/api/station/:id', () => {
     expect(res.status).toBe(503);
   });
 
+  it('concurrent requests for one station share a single TfL fetch (no stampede)', async () => {
+    const tfl = fakeTfl();
+    const cache = new MemoryStationCache();
+    const limiter = new CallLimiter(LIVE.stationCallsPerMinute);
+    const res = await Promise.all(Array.from({ length: 20 }, () => handleStation(deps('940GZZLUOXC', tfl, cache, limiter))));
+    expect(res.every((r) => r.status === 200)).toBe(true);
+    expect(tfl.seen).toHaveLength(1);
+  });
+
   it('the limiter frees up after a minute', () => {
     const limiter = new CallLimiter(2);
     expect(limiter.tryTake(NOW, 2)).toBe(true);

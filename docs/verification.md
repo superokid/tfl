@@ -39,3 +39,15 @@ What was checked against live TfL data, and what it changed. Newest first.
   together with westbound Paddington trains on platform 5. Boards now group by platform.
 - Euston, Bank and Stratford boards read like station departure boards (branch platforms apart, terminating
   trains marked).
+
+## 2026-11-08, Phase 7 hardening (production build via `vite preview`)
+
+| Check | Result |
+|---|---|
+| Security headers | Page: strict CSP (`script-src 'self'`, no inline scripts), `frame-ancestors 'none'`, nosniff, no-referrer, COOP. API: `default-src 'none'`. Hashed assets `immutable`. |
+| Lighthouse mobile | Performance 92 · Accessibility 100 · Best practices 100 · SEO 100 (FCP 2.2 s, LCP 2.8 s, TBT 80 ms, CLS 0.072). First run found an invalid `aria-controls` and a missing `robots.txt`; both fixed. |
+| Load: `bun scripts/load.ts` 75 s, 20 concurrent, 90% status / 10% station | 7,591 requests (101/s), 0 errors, 0 stale; p50 161 ms, p95 291 ms, max 5.2 s (one cold refresh). **4 line refreshes** (limit 4), **9 station fetches** for 3 stations. |
+| Spot-check vs tfl.gov.uk status page | Bakerloo "Severe delays · Part suspended", Central "Minor delays", Lioness "Reduced service", Waterloo & City "Planned closure": same as `/api/status`. |
+
+**Found by the load test:** station cache expiry under load caused a stampede (38 fetches, 5 × 503).
+Concurrent requests for a station now share one in-flight fetch.

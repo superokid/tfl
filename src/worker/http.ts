@@ -1,6 +1,10 @@
+/** Every API response: JSON only, never framed, never rendered as a page, no referrer leaks. */
 const BASE_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
   'X-Content-Type-Options': 'nosniff',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
 } as const;
 
 export function json(body: unknown, init: ResponseInit = {}): Response {

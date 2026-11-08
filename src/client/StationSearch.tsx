@@ -32,7 +32,7 @@ export function StationSearch({ onPick }: { onPick: (id: string) => void }) {
         onKeyDown={(e) => {
           if (e.key === 'Enter' && results[0]) pick(results[0].id);
         }}
-        aria-controls={listId}
+        aria-controls={query.trim() ? listId : undefined}
       />
       {query.trim() && (
         <ul id={listId} className="results" aria-live="polite">

@@ -164,7 +164,7 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 - **Bus route:** TfL's status and message, then a direction toggle and every stop in order with its next
   3 buses (stop letters as on the flag); tap a stop for its board. Not checked against live buses.
 - States: loading skeleton, stale banner, device copy when offline, retry, "paused" after 10 min idle.
-- AA contrast, colour never the only signal, 320 px, dark mode. No TfL logo; "Powered by TfL Open Data".
+- AA contrast, colour never the only signal, 320 px. One light theme whatever the browser's setting. No TfL logo; "Powered by TfL Open Data".
 
 ### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))
 Refresh ≤ every 30 s, 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client
@@ -214,7 +214,7 @@ polls every 60 s and stops after 10 min idle.
 | 2 | Rules engine | Test-first, every §7 rule case, config only |
 | 3 | Reference data | Lines, stations, gaps, hours in D1; cron; fallbacks logged |
 | 4 | Live data layer | §4.1 complete; outage and repeat tests in `docs/verification.md` |
-| 5 | Rail UI | All states, service worker, 320 px, dark mode, offline, bundle size |
+| 5 | Rail UI | All states, service worker, 320 px, offline, bundle size |
 | 6 | Station search | Any rail station's live departures (ADR-008); buses not covered |
 | 7 | Hardening | Security headers, Lighthouse, load test, 3 spot-checks vs tfl.gov.uk |
 | 8 | Docs | README, PROMPTS, time, unfinished |

@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #f4f5f7;
   --card: #ffffff;
   --fg: #14171a;
@@ -22,27 +22,6 @@
   line-height: 1.45;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1215;
-    --card: #181c21;
-    --fg: #eef1f4;
-    --muted: #a3acb6;
-    --border: #2a3038;
-    --accent: #8ab4ff;
-    --good: #7fd3a1;
-    --minor: #ffd27a;
-    --major: #ffad7a;
-    --closed: #ff8a80;
-    --alert-bg: #3a1714;
-    --ok-bg: #12301f;
-    --warn-fg: #ffd27a;
-    --warn-bg: #3a2c0a;
-    --neutral-bg: #222830;
-    --bone: #252b33;
-    --shine: #333b46;
-  }
-}
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); }
@@ -168,7 +147,6 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .status-major { color: var(--major); } .status-major .status-icon { background: var(--major); }
 .status-closed { color: var(--closed); } .status-closed .status-icon { background: var(--closed); }
 .status-unknown { color: var(--muted); } .status-unknown .status-icon { background: var(--muted); }
-@media (prefers-color-scheme: dark) { .status-icon { color: #0f1215; } }
 .status-big { font-size: 1.25rem; font-weight: 700; }
 .status-big .status-icon { width: 1.5rem; height: 1.5rem; font-size: 0.85rem; }
 

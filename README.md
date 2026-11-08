@@ -5,7 +5,7 @@ A live London transport app: TfL's status for every Tube, Elizabeth line, Overgr
 with its next buses stop by stop.
 Built for passengers: one search box, mode tabs, saved favourites, plain words.
 
-- **Live:** https://tfl-status-vs-reality.kelvinok52.workers.dev
+- **Live:** https://better-tfl.kelvinok52.workers.dev
 - **Plan sent before coding:** [`docs/PLAN.md`](docs/PLAN.md) · **AI rules file:** [`CLAUDE.md`](CLAUDE.md) ·
   **Prompt sample:** [`PROMPTS.md`](PROMPTS.md)
 
@@ -121,5 +121,5 @@ bunx wrangler d1 create tfl-status-vs-reality --location weur   # once: near Lon
 bunx wrangler secret put TFL_APP_KEY                            # once
 bunx wrangler d1 migrations apply DB --remote
 bun run deploy
-bun run smoke https://tfl-status-vs-reality.kelvinok52.workers.dev
+bun run smoke https://better-tfl.kelvinok52.workers.dev
 ```

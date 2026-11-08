@@ -1,9 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "tfl-status-vs-reality",
+  "name": "better-tfl",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
-  // Live at https://tfl-status-vs-reality.kelvinok52.workers.dev. No per-version preview URLs:
+  // Live at https://better-tfl.kelvinok52.workers.dev. No per-version preview URLs:
   // only the deployed version is public.
   "workers_dev": true,
   "preview_urls": false,

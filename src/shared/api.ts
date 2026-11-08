@@ -22,7 +22,7 @@ export interface LineReport extends LineVerdict {
 }
 
 /** Bump when the Snapshot shape changes: a stored snapshot of another version is ignored and refreshed. */
-export const SNAPSHOT_VERSION = 2;
+export const SNAPSHOT_VERSION = 3;
 
 /** What is stored in D1 and served by /api/status. */
 export interface Snapshot {

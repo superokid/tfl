@@ -1,5 +1,5 @@
 /**
- * GET /api/station/:id: live departures at any rail station, on demand (ADR-009). One TfL call per
+ * GET /api/station/:id: live departures at any rail station, on demand (ADR-008, footprint ADR-009). One TfL call per
  * stop id at the station (≤ 4), cached 30 s per data centre, limited per Worker instance in memory (no D1
  * writes). If TfL fails, the last good copy is served marked stale.
  */

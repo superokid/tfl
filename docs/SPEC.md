@@ -15,7 +15,7 @@ outcome, a false alarm the next worst.
 
 - **Rail** (Tube, Elizabeth, DLR, Overground, Tram, Cable Car): checked on every refresh. Lines with no
   predictions (Cable Car) are status-only.
-- **Bus:** checked when searched ([ADR-003](adr/003-rail-automatic-bus-on-demand.md)).
+- **Any rail station:** search and live departures ([ADR-008](adr/008-station-search.md)). Buses: not yet.
 - **Out:** history, map ([ADR-004](adr/004-text-list-no-map.md)), accounts, branch-only disruptions
   (known limit).
 - Nothing the API provides is hardcoded ([ADR-005](adr/005-reference-data-from-api.md)). Exceptions go
@@ -84,7 +84,7 @@ D1 snapshot (shared, outage fallback) · HTTP cache · `localStorage` (last good
 - TfL has no timetables for the Elizabeth line and Overground (404, even via its own disambiguation links):
   those lines use the per-mode fallback gap, so they can match or be "Can't verify", never flagged.
 - `overrides.ts`: Cable Car is status-only (no predictions exist).
-- Bus route reference: fetched on first search, kept 24 h (Phase 6).
+- Station index for search: `src/shared/reference/stations.json`, same script.
 
 ## 5. Rules
 
@@ -172,6 +172,10 @@ and whether the status matches what's running.
 - AA contrast, colour never the only signal, 320 px, dark mode.
 - No TfL logo or endorsement. Credit "Powered by TfL Open Data".
 - Snapshot shape is versioned (`SNAPSHOT_VERSION`): a row from an older deploy is ignored and refreshed.
+
+### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))
+Refresh ≤ every 30 s, 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client
+polls every 60 s and stops after 10 min idle.
 
 ## 7. Tests and CI
 

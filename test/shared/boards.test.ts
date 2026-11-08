@@ -18,6 +18,45 @@ describe('buildBoard', () => {
     expect(south.arrivals[0]!.destination).toBe('Brixton');
   });
 
+  it('groups by physical platform, not TfL direction (Elizabeth line at Stratford)', () => {
+    const p = [
+      ...preds(now, [3, 11], 'outbound', '', 0.5, { platform: 'Platform 5', destination: 'Paddington' }),
+      // TfL marks these eastbound trains "outbound" too.
+      ...preds(now, [14, 29], 'outbound', '', 0.5, { platform: 'Platform 8', destination: 'Gidea Park' }),
+    ].map((x, i) => ({ ...x, vehicleId: `v${i}` }));
+    const labels = buildBoard('s', 'Stratford', p, now).directions.map((d) => d.label);
+    expect(labels).toEqual(['Platform 5 · towards Paddington', 'Platform 8 · towards Gidea Park']);
+  });
+
+  it('unknown-platform services join the platform with the same destination, never a guessed group', () => {
+    const known = preds(now, [3], 'outbound', '', 0.5, { platform: 'Platform 5', destination: 'Paddington' });
+    const unknown = preds(now, [48], 'outbound', '', 0.5, { destination: 'Paddington' }).map((x) => ({ ...x, vehicleId: 'u1' }));
+    const stray = preds(now, [50], 'outbound', '', 0.5, { destination: 'Somewhere' }).map((x) => ({ ...x, vehicleId: 'u2' }));
+    const b = buildBoard('s', 'Stratford', [...known, ...unknown, ...stray], now);
+    expect(b.directions).toHaveLength(1);
+    expect(b.directions[0]!.arrivals).toHaveLength(2);
+  });
+
+  it('a terminus merges its terminating platforms into one group', () => {
+    const p = [
+      ...preds(now, [1, 5], 'inbound', 'westbound', 0.5, { platform: 'Westbound - Platform 13', terminatesHere: true }),
+      ...preds(now, [3], 'inbound', 'westbound', 0.5, { platform: 'Westbound - Platform 14', terminatesHere: true }),
+    ].map((x, i) => ({ ...x, vehicleId: `t${i}` }));
+    const b = buildBoard('s', 'Stratford', p, now);
+    expect(b.directions.map((d) => d.label)).toEqual(['Westbound · trains terminating here']);
+    expect(b.directions[0]!.arrivals).toHaveLength(3);
+  });
+
+  it('compass platforms keep the compass word first', () => {
+    const p = preds(now, [2], 'outbound', 'northbound', 0.5, { platform: 'Northbound - Platform 1' });
+    expect(buildBoard('s', 'X', p, now).directions[0]!.label).toBe('Northbound · Platform 1');
+  });
+
+  it('marks trains that terminate here', () => {
+    const p = preds(now, [2], 'inbound', 'westbound', 0.5, { terminatesHere: true, destination: 'Stratford' });
+    expect(buildBoard('s', 'Stratford', p, now).directions[0]!.arrivals[0]!.terminates).toBe(true);
+  });
+
   it('no compass word: labels by most common destination', () => {
     const p = preds(now, [2, 7], 'outbound', '', 0.5, { destination: 'Abbey Wood' });
     expect(buildBoard('s', 'Bond Street', p, now).directions[0]!.label).toBe('Towards Abbey Wood');

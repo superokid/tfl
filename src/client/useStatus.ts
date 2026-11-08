@@ -140,7 +140,7 @@ export function useStatus() {
  * The server's clock now, estimated from its time at the last fetch plus local time since. Ticks every
  * second. Using server time keeps ages and arrival countdowns right even if the phone's clock is off.
  */
-export function useServerNow(data: StatusBody | null, receivedAt: number): number | null {
+export function useServerNow(data: { serverNow: number } | null, receivedAt: number): number | null {
   const [local, setLocal] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setLocal(Date.now()), 1000);

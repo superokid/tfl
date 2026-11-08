@@ -35,6 +35,9 @@ export interface Prediction {
   terminatesHere: boolean;
   /** Where it's going, for the arrivals board ("Brixton"). Display only. */
   destination: string | null;
+  /** Physical platform ("Northbound - Platform 1", "Platform 8"); null if TfL says unknown. Display only:
+   * boards group by platform because TfL's `direction` is sometimes wrong (Elizabeth line at Stratford). */
+  platform: string | null;
 }
 
 export type ArrivalsFailure = 'failed' | 'invalid' | 'budget';

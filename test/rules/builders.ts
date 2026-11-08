@@ -52,6 +52,7 @@ export function preds(
     confirmed: true,
     terminatesHere: false,
     destination: null,
+    platform: null,
     ...extra,
   }));
 }

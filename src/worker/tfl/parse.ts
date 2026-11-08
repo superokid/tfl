@@ -88,6 +88,7 @@ export function parseArrivals(
         timingRead: time(timing.read) ?? 0,
         confirmed: destination !== null || destinationName !== null,
         terminatesHere: destination === stopId,
+        platform: platform && !/unknown/i.test(platform) ? platform : null,
         destination: destinationName
           ? cleanStationName(destinationName)
           : towards && !/check front of train/i.test(towards)

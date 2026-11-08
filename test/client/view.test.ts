@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeLabel, evidenceText, formatAge, formatDue, groupLines, headline } from '../../src/client/view';
+import { badgeLabel, evidenceText, formatAge, formatDue, groupLines, headline, searchStations } from '../../src/client/view';
 import type { DirectionEvidence, LineVerdict, VerdictKind } from '../../src/shared/rules/types';
 
 const line = (lineName: string, verdict: VerdictKind): LineVerdict => ({
@@ -103,4 +103,24 @@ describe('formatDue', () => {
     [150_000, '3 min'],
     [12 * 60_000, '12 min'],
   ])('%i ms ahead → %s', (ms, text) => expect(formatDue(1_000_000 + ms, 1_000_000)).toBe(text));
+});
+
+describe('searchStations', () => {
+  const st = (name: string) => ({ id: name, name, lines: [] });
+  const all = [st('Bank'), st('Canning Town'), st('Kings Cross St. Pancras'), st("Shepherd's Bush"), st('Elephant & Castle'), st('Bankside')];
+
+  it('prefix first, then word start, then contains', () => {
+    expect(searchStations(all, 'ban').map((s) => s.name)).toEqual(['Bank', 'Bankside']);
+    expect(searchStations(all, 'town').map((s) => s.name)).toEqual(['Canning Town']);
+    expect(searchStations(all, 'ross').map((s) => s.name)).toEqual(['Kings Cross St. Pancras']);
+  });
+
+  it('ignores punctuation and accepts "and" for "&"', () => {
+    expect(searchStations(all, 'shepherds').map((s) => s.name)).toEqual(["Shepherd's Bush"]);
+    expect(searchStations(all, 'elephant and').map((s) => s.name)).toEqual(['Elephant & Castle']);
+  });
+
+  it('empty query → nothing', () => {
+    expect(searchStations(all, '  ')).toEqual([]);
+  });
 });

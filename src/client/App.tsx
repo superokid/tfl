@@ -1,8 +1,12 @@
 import type { LineReport } from '../shared/api';
 import type { StationBoard } from '../shared/boards';
 import { lineColour } from './lineColours';
+import { useStationRoute } from './stations';
+import { StationSearch } from './StationSearch';
+import { StationView } from './StationView';
+import { Times } from './Times';
 import { useServerNow, useStatus } from './useStatus';
-import { badgeLabel, evidenceText, formatAge, formatDue, groupLines, headline, isOverThreshold } from './view';
+import { badgeLabel, evidenceText, formatAge, groupLines, headline, isOverThreshold } from './view';
 
 const STALE_AFTER_MS = 90_000;
 
@@ -14,6 +18,7 @@ export function App() {
   const head = groups ? headline(groups) : null;
   const outdated = data !== null && (data.stale || source === 'device' || (age ?? 0) > STALE_AFTER_MS);
   const allLines = data ? [...data.lines].sort((a, b) => a.lineName.localeCompare(b.lineName)) : [];
+  const [stationId, goStation] = useStationRoute();
 
   return (
     <div className="page">
@@ -58,9 +63,13 @@ export function App() {
         </div>
       )}
 
-      {!data && loading && <Skeleton />}
+      <StationSearch onPick={goStation} />
 
-      {groups && head && now !== null && (
+      {stationId && <StationView id={stationId} lines={data?.lines ?? []} paused={paused} onBack={() => goStation(null)} />}
+
+      {!stationId && !data && loading && <Skeleton />}
+
+      {!stationId && groups && head && now !== null && (
         <main>
           <p className={`headline headline-${head.tone}`}>{head.text}</p>
 
@@ -178,19 +187,7 @@ function Board({ board, now }: { board: StationBoard; now: number }) {
       ) : directions.length === 0 ? (
         <p className="small muted">No services predicted.</p>
       ) : (
-        directions.map((d) => (
-          <div key={d.key} className="board-dir">
-            <p className="board-label small muted">{d.label}</p>
-            <ol className="times">
-              {d.arrivals.map((a, i) => (
-                <li key={`${a.at}-${i}`}>
-                  <span className="due">{formatDue(a.at, now)}</span>
-                  <span className="dest">{a.destination ?? 'Check front of train'}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        ))
+        directions.map((d) => <Times key={d.key} d={d} now={now} />)
       )}
     </section>
   );

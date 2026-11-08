@@ -75,3 +75,14 @@ Sample of prompts used (Claude Code), with corrections.
     The gap was real but later than the 4 trains shown. The sentence now says when the gap starts, and boards
     show 6 trains.
   - Stored snapshots are versioned so an older shape left in D1 after a deploy is refreshed, not served.
+
+## 2026-11-08: station search and the free-tier footprint
+- "Yes, add search": search any rail station for live departures. The index comes from the same script as
+  the reference data, so typing never calls TfL.
+- Mid-build: "make sure this app not hit my monthly limit fast, since I have other website rely on this free
+  cloudflare". Checked the limits: daily and account-wide. Cut D1 writes per refresh from ~5 to 2, dropped the
+  D1 budget table, refresh ≤ every 30 s, client polls every 60 s and stops when idle. A test drives 600
+  requests and checks the bound.
+- Live Stratford page: TfL's own `direction` put eastbound Gidea Park trains with Paddington ones → boards
+  group by physical platform. The Jubilee terminus listed only "Stratford" → terminating trains are marked
+  and merged.

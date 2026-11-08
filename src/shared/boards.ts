@@ -5,11 +5,13 @@ export interface UpcomingArrival {
   /** Expected arrival (epoch ms). Absolute, so the UI can count down between refreshes. */
   at: number;
   destination: string | null;
+  /** Ends its journey here (e.g. Jubilee trains arriving at Stratford). */
+  terminates: boolean;
 }
 
 export interface DirectionBoard {
   key: string;
-  /** "Southbound", "Towards Abbey Wood", or the platform name. */
+  /** "Southbound · Platform 1", "Platform 8 · towards Shenfield", or "Towards Abbey Wood". */
   label: string;
   arrivals: UpcomingArrival[];
 }
@@ -38,13 +40,27 @@ export function buildBoard(
   perDirection = 4,
 ): StationBoard {
   if (predictions === null) return { stopId, name, live: false, directions: [] };
+  // Group by physical platform when TfL names one: TfL's `direction` is sometimes wrong (Elizabeth line
+  // at Stratford lists eastbound Gidea Park trains as outbound), and branch platforms stay apart.
+  const upcoming = predictions.filter((p) => p.expectedArrival >= now - 30_000);
   const byKey = new Map<string, Prediction[]>();
-  for (const p of predictions) {
-    if (p.expectedArrival < now - 30_000) continue;
-    byKey.set(p.directionKey, [...(byKey.get(p.directionKey) ?? []), p]);
+  const add = (key: string, p: Prediction) => byKey.set(key, [...(byKey.get(key) ?? []), p]);
+  for (const p of upcoming) if (p.platform) add(p.platform, p);
+  // "Platform Unknown" (often far-future): join the platform serving the same destination; if the station
+  // reports no platforms at all, group by direction; otherwise drop it rather than guess.
+  for (const p of upcoming) {
+    if (p.platform) continue;
+    const match = [...byKey].find(([, ps]) => ps.some((q) => q.destination && q.destination === p.destination));
+    if (match) add(match[0], p);
+    else if (byKey.size === 0 || [...byKey.keys()].every((k) => k.startsWith('dir:'))) add(`dir:${p.directionKey}`, p);
+  }
+  // At a terminus, platforms full of arriving-to-terminate trains merge into one group per compass word.
+  for (const [key, ps] of [...byKey]) {
+    if (ps.length === 0 || !ps.every((p) => p.terminatesHere)) continue;
+    byKey.delete(key);
+    for (const p of ps) add(`term:${p.directionLabel}`, p);
   }
   const directions = [...byKey]
-    .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, ps]): DirectionBoard => {
       const earliest = new Map<string, Prediction>();
       for (const p of ps) {
@@ -53,20 +69,29 @@ export function buildBoard(
       }
       const sorted = [...earliest.values()].sort((a, b) => a.expectedArrival - b.expectedArrival);
       const compass = sorted.find((p) => p.directionLabel)?.directionLabel;
-      const towards = mostCommon(sorted.map((p) => p.destination));
-      const label = compass
-        ? capitalise(compass)
-        : towards
-          ? `Towards ${towards}`
-          : key.startsWith('platform:')
-            ? key.slice(9)
+      const towards = mostCommon(sorted.filter((p) => !p.terminatesHere).map((p) => p.destination));
+      const platform = sorted[0]?.platform ?? null;
+      const platformNo = platform ? /platform\s*\S+/i.exec(platform)?.[0] : undefined;
+      const label = key.startsWith('term:')
+        ? compass
+          ? `${capitalise(compass)} · trains terminating here`
+          : 'Trains terminating here'
+        : compass
+        ? [capitalise(compass), platformNo ? capitalise(platformNo) : null].filter(Boolean).join(' · ')
+        : platform
+          ? [platform, towards ? `towards ${towards}` : null].filter(Boolean).join(' · ')
+          : towards
+            ? `Towards ${towards}`
             : 'Services';
       return {
         key,
         label,
-        arrivals: sorted.slice(0, perDirection).map((p) => ({ at: p.expectedArrival, destination: p.destination })),
+        arrivals: sorted
+          .slice(0, perDirection)
+          .map((p) => ({ at: p.expectedArrival, destination: p.destination, terminates: p.terminatesHere })),
       };
-    });
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
   return { stopId, name, live: true, directions };
 }
 

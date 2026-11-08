@@ -93,3 +93,33 @@ export function evidenceText(e: DirectionEvidence): string {
 export function isOverThreshold(e: DirectionEvidence): boolean {
   return e.usable && e.observedGapMin !== null && e.observedGapMin > e.thresholdMin;
 }
+
+export interface SearchableStation {
+  id: string;
+  name: string;
+  lines: string[];
+}
+
+const normalise = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/['’.]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/** Ranks stations for a query: name starts with it, then a word starts with it, then contains it. */
+export function searchStations<T extends SearchableStation>(stations: T[], query: string, limit = 8): T[] {
+  const q = normalise(query);
+  if (!q) return [];
+  const scored: { s: T; rank: number }[] = [];
+  for (const s of stations) {
+    const n = normalise(s.name);
+    const rank = n.startsWith(q) ? 0 : n.split(' ').some((w) => w.startsWith(q)) ? 1 : n.includes(q) ? 2 : -1;
+    if (rank >= 0) scored.push({ s, rank });
+  }
+  return scored
+    .sort((a, b) => a.rank - b.rank || a.s.name.localeCompare(b.s.name))
+    .slice(0, limit)
+    .map((x) => x.s);
+}

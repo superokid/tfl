@@ -2,8 +2,8 @@
 
 Shows when Transport for London's official line status doesn't match what's really running.
 
-> Work in progress: phases 0–5 done (see [`docs/SPEC.md`](docs/SPEC.md) §9). Bus search, hardening and the
-> final README are next.
+> Work in progress: rail status, live next trains and station search are done (see [`docs/SPEC.md`](docs/SPEC.md)
+> §9). Hardening and the final README are next.
 
 ## How it decides
 
@@ -19,6 +19,12 @@ stations. A line is flagged only when **both** stations agree, against that line
 
 Full rules: [`docs/SPEC.md`](docs/SPEC.md) §5 · decisions: [`docs/adr/`](docs/adr/) · what was checked
 live: [`docs/verification.md`](docs/verification.md).
+
+## Free-tier footprint
+
+Built to share a free Cloudflare account with other sites ([ADR-009](docs/adr/009-free-tier-footprint.md)):
+page loads are static and free; `/api` refreshes at most every 30 s with 2 D1 writes; the page polls every
+60 s and stops after 10 min idle. Worst case ≤ 5,760 D1 writes/day (~6% of the daily limit).
 
 ## Run locally
 

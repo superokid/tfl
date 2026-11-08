@@ -32,3 +32,10 @@ What was checked against live TfL data, and what it changed. Newest first.
   4 then 12, so the claim can be checked by eye. Raw TfL arrivals confirmed the gap (750 s → 1230 s).
 - Bakerloo shows TfL's full message and Waterloo's live board while North Wembley (inside the suspension)
   says "No services predicted".
+
+## 2026-11-08, station search
+- `/api/station/HUBSRA` (Stratford): 1.2 s cold, 18 ms cached; unknown id → 404; index 457 stations, cached a day.
+- Found live: TfL lists Elizabeth line Gidea Park trains (platform 8, eastbound) as `direction: outbound`,
+  together with westbound Paddington trains on platform 5. Boards now group by platform.
+- Euston, Bank and Stratford boards read like station departure boards (branch platforms apart, terminating
+  trains marked).

@@ -1,7 +1,8 @@
 import type { ErrorBody, HealthBody } from '../shared/api';
-import { RAIL_REFERENCE } from '../shared/reference/load';
+import { RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
+import { EdgeStationCache, handleStation } from './station';
 import { handleStatus, handleStatusWithoutStore } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
@@ -48,6 +49,26 @@ export default {
         console.error('store unavailable, calling TfL directly:', redact(err instanceof Error ? err.message : String(err)));
         return handleStatusWithoutStore(tfl, RAIL_REFERENCE, now);
       }
+    }
+
+    if (url.pathname === '/api/stations') {
+      return json(STATIONS, { headers: { 'Cache-Control': 'public, max-age=86400' } });
+    }
+
+    const station = /^\/api\/station\/([A-Za-z0-9]{3,20})$/.exec(url.pathname);
+    if (station) {
+      if (!env.TFL_APP_KEY) {
+        return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      }
+      return handleStation({
+        id: station[1]!,
+        stations: STATIONS,
+        reference: RAIL_REFERENCE,
+        cache: new EdgeStationCache(),
+        store: env.DB ? new D1Store(env.DB) : null,
+        tfl: () => createTflClient(env.TFL_APP_KEY),
+        now: Date.now(),
+      });
     }
 
     return notFound();

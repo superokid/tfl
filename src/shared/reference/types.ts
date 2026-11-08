@@ -33,3 +33,8 @@ export interface ReferenceFile {
   generatedAt: string;
   lines: LineFile[];
 }
+
+export interface StationsFile {
+  generatedAt: string;
+  stations: import('./derive').StationEntry[];
+}

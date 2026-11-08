@@ -79,4 +79,8 @@ export const LIVE = {
   reuseVerdictMs: 120_000,
   /** If D1 is down, memoise a direct TfL result per isolate for this long. */
   memoMs: 15_000,
+  /** Station departures: fresh this long, then refetched on request. */
+  stationFreshMs: 15_000,
+  /** A station's last good departures are kept this long for outages (Cache API, per data centre). */
+  stationKeepMs: 3_600_000,
 } as const;

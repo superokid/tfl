@@ -1,10 +1,12 @@
 import type { DirectionRef, ServiceDay, Weekday } from '../rules/types';
 import railJson from './rail.json';
-import type { DirectionFile, ReferenceFile } from './types';
+import stationsJson from './stations.json';
+import type { DirectionFile, ReferenceFile, StationsFile } from './types';
 
 // JSON imports widen string unions (e.g. mode), so cast through unknown. The shape is guarded by
 // test/reference/rail-json.test.ts, which runs on every push.
 export const RAIL_REFERENCE = railJson as unknown as ReferenceFile;
+export const STATIONS = stationsJson as unknown as StationsFile;
 
 /** Compact on-disk direction → the engine's per-weekday form. */
 export function expandDirection(d: DirectionFile): DirectionRef {

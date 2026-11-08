@@ -40,6 +40,29 @@ export interface StatusBody extends Snapshot {
   stale: boolean;
 }
 
+/** GET /api/station/:id: live departures at one station, per line. */
+export interface StationBody {
+  stationId: string;
+  name: string;
+  checkedAt: number;
+  serverNow: number;
+  stale: boolean;
+  lines: { lineId: string; lineName: string; board: StationBoard }[];
+}
+
+export function isStationBody(value: unknown): value is StationBody {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.stationId === 'string' &&
+    typeof v.name === 'string' &&
+    typeof v.checkedAt === 'number' &&
+    typeof v.serverNow === 'number' &&
+    typeof v.stale === 'boolean' &&
+    Array.isArray(v.lines)
+  );
+}
+
 export function isHealthBody(value: unknown): value is HealthBody {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;

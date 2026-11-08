@@ -6,7 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import type { Mode } from '../src/shared/config.ts';
 import { createLimiter } from '../src/shared/limit.ts';
-import { directionFromTimetable, learnBoundDirections, pickCheckStations } from '../src/shared/reference/derive.ts';
+import { collectStations, directionFromTimetable, learnBoundDirections, pickCheckStations } from '../src/shared/reference/derive.ts';
 import { OVERRIDES } from '../src/shared/reference/overrides.ts';
 import type { DirectionFile, LineFile, ReferenceFile } from '../src/shared/reference/types.ts';
 import { redact, tflUrl } from '../src/shared/tfl-url.ts';
@@ -14,6 +14,8 @@ import { readTflKey } from './tfl-env.ts';
 
 const RAIL_MODES = 'tube,elizabeth-line,dlr,overground,tram,cable-car';
 const OUT = 'src/shared/reference/rail.json';
+const STATIONS_OUT = 'src/shared/reference/stations.json';
+const sequences: unknown[] = [];
 const key = readTflKey();
 const limit = createLimiter(6);
 let calls = 0;
@@ -41,12 +43,18 @@ const built: LineFile[] = await Promise.all(
     const lineId = String(l.id);
     const base = { lineId, lineName: String(l.name), mode: String(l.modeName) as Mode, notes: [] as string[] };
 
+    // Both directions feed the station search index (a few stations are served one way only).
+    for (const dir of ['outbound', 'inbound']) {
+      const seq = await get(`/Line/${lineId}/Route/Sequence/${dir}`);
+      if (seq) sequences.push(seq);
+    }
+
     const override = OVERRIDES[lineId];
     if (override?.statusOnly) {
       base.notes.push(`override: ${override.reason}`);
       return { ...base, statusOnly: true, stations: [], boundDirections: {} };
     }
-    const sequence = await get(`/Line/${lineId}/Route/Sequence/outbound`);
+    const sequence = sequences.find((q) => (q as Json).lineId === lineId && (q as Json).direction === 'outbound') ?? null;
     let picks = pickCheckStations(sequence);
     if (override?.checkStations) {
       const names = new Map(picks.map((p) => [p.stopId, p.name]));
@@ -89,7 +97,12 @@ const json = JSON.stringify(file);
 if (/app_key=/.test(json)) throw new Error('key leaked into reference');
 writeFileSync(OUT, `${json}\n`);
 
-console.log(`Wrote ${OUT} (${(json.length / 1024).toFixed(1)} KB) from ${calls} calls`);
+const stations = collectStations(sequences);
+const stationsJson = JSON.stringify({ generatedAt: file.generatedAt, stations });
+if (/app_key=/.test(stationsJson)) throw new Error('key leaked into stations');
+writeFileSync(STATIONS_OUT, `${stationsJson}\n`);
+
+console.log(`Wrote ${OUT} (${(json.length / 1024).toFixed(1)} KB) and ${STATIONS_OUT} (${stations.length} stations, ${(stationsJson.length / 1024).toFixed(1)} KB) from ${calls} calls`);
 for (const l of built) {
   const st = l.statusOnly ? 'status-only' : l.stations.map((s) => `${s.name} [${s.directions.map((d) => d.directionKey[0]).join('')}]`).join(', ');
   console.log(`  ${l.lineId.padEnd(18)} ${st}${l.notes.length ? `  · ${l.notes.join('; ')}` : ''}`);

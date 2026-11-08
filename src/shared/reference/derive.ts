@@ -195,3 +195,44 @@ export function boundWord(platformName: string): string | null {
   const m = /\b(north|south|east|west)bound\b|\b(inner|outer) rail\b/i.exec(platformName);
   return m ? m[0].toLowerCase() : null;
 }
+
+export interface StationEntry {
+  /** Search key: TfL's hub id when the station spans modes (HUBSRA), else the stop id. */
+  id: string;
+  name: string;
+  /** Stop ids to ask for arrivals (one per mode at a hub). */
+  stopIds: string[];
+  lines: string[];
+}
+
+/** Route sequences (any lines, any direction) → one search entry per station, hubs merged. */
+export function collectStations(sequences: unknown[]): StationEntry[] {
+  const byKey = new Map<string, { names: Set<string>; stopIds: Set<string>; lines: Set<string> }>();
+  for (const seq of sequences) {
+    if (!isObj(seq)) continue;
+    const lineId = str(seq.lineId);
+    for (const branch of arr(seq.stopPointSequences)) {
+      if (!isObj(branch)) continue;
+      for (const p of arr(branch.stopPoint)) {
+        if (!isObj(p)) continue;
+        const id = str(p.id);
+        const name = str(p.name);
+        if (!id || !name) continue;
+        const key = str(p.topMostParentId) ?? id;
+        const e = byKey.get(key) ?? { names: new Set(), stopIds: new Set(), lines: new Set() };
+        e.names.add(cleanStationName(name));
+        e.stopIds.add(id);
+        if (lineId) e.lines.add(lineId);
+        byKey.set(key, e);
+      }
+    }
+  }
+  return [...byKey]
+    .map(([id, e]) => ({
+      id,
+      name: [...e.names].sort((a, b) => a.length - b.length || a.localeCompare(b))[0]!,
+      stopIds: [...e.stopIds].sort(),
+      lines: [...e.lines].sort(),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}

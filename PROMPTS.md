@@ -108,3 +108,8 @@ Sample of prompts used (Claude Code), with corrections.
   keeping TfL's "towards" so same-named stops can be told apart, live stop departures.
 - Phone screenshots found: page overflow from the scrolling tab bar (grid min-width), the Bus tab hidden
   off-screen (tabs now wrap), bus destinations truncated, a duplicated station heading. All fixed and re-shot.
+- "why the bus only show good service. not showing the time of next bus": the route page only fetched status;
+  times needed a stop search first. Route page now lists every stop in order with its next buses.
+- "make sure not spamming my cloudflare api limit & have good budget": status and times in one response
+  (1 Worker request per minute while the page is open), stop order cached a day (2 TfL calls per refresh),
+  30 s edge cache shared by everyone, no D1 writes. Tests assert 4 calls cold, 0 within 30 s, 2 after.

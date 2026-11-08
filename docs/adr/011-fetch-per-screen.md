@@ -14,7 +14,7 @@ user request". Bus users had nothing to use.
 | Line: live check + next trains | `/api/line/:id` | 1 + its check stops | edge 30 s, shared in-flight |
 | "Check every line" button | `/api/checks` | ~42 | D1 snapshot `checks`; home shows its verdicts for 10 min |
 | Station or bus stop | `/api/station/:id` | 1–4 | edge 30 s |
-| Bus route | `/api/bus/:route` | 1 | edge 60 s |
+| Bus route: status + next buses at every stop | `/api/bus/:route` | 2 (+2 for stop order, cached a day) | edge 30 s, shared in-flight |
 | Bus stop search | `/api/search?q=` | 1 per new query | edge 1 day |
 | Search index | `/api/index` | 0 (generated) | browser 1 day |
 

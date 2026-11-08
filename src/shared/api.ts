@@ -128,13 +128,32 @@ export interface BusSearchBody {
   stops: BusStopMatch[];
 }
 
-/** GET /api/bus/:route: one bus route's status, on demand. */
+export interface RouteStop {
+  id: string;
+  name: string;
+  /** Stop letter on the flag ("E"), if TfL gives one. */
+  letter: string | null;
+  /** Next buses on this route at this stop (epoch ms), soonest first, at most 3. */
+  arrivals: number[];
+}
+
+export interface RouteDirection {
+  id: 'outbound' | 'inbound';
+  /** Last stop: "Victoria". */
+  towards: string;
+  stops: RouteStop[];
+}
+
+/** GET /api/bus/:route: status, and every stop in order with its next buses. One request per refresh. */
 export interface BusRouteBody {
   routeId: string;
   name: string;
-  /** TfL status descriptions, e.g. ["Good Service"] or ["Special Service"]. */
+  /** TfL status descriptions, e.g. ["Good Service"] or ["Special Service"]; [] if TfL didn't answer. */
   statuses: string[];
   messages: string[];
+  directions: RouteDirection[];
+  /** False when TfL's arrivals call failed: stops are listed without times. */
+  timesLive: boolean;
   checkedAt: number;
   serverNow: number;
   stale: boolean;
@@ -143,7 +162,14 @@ export interface BusRouteBody {
 export function isBusRouteBody(value: unknown): value is BusRouteBody {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return typeof v.routeId === 'string' && Array.isArray(v.statuses) && Array.isArray(v.messages) && typeof v.checkedAt === 'number';
+  return (
+    typeof v.routeId === 'string' &&
+    Array.isArray(v.statuses) &&
+    Array.isArray(v.messages) &&
+    Array.isArray(v.directions) &&
+    typeof v.timesLive === 'boolean' &&
+    typeof v.checkedAt === 'number'
+  );
 }
 
 /** GET /api/station/:id: live departures at one station or bus stop, per line or route. */

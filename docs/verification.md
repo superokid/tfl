@@ -60,3 +60,6 @@ Concurrent requests for a station now share one in-flight fetch.
 | Phone screenshots, 360 px, light + dark (CDP-driven, incl. typing in search) | Home, line, station, bus stop, bus route, bus tab, search for "oxford" and "38" |
 | Found and fixed in screenshots | Horizontal overflow from the tab bar; Bus tab off-screen; bus destinations truncated; duplicate station heading |
 | Status ranking | Bakerloo "Severe Delays + Part Suspended" ranks as part-suspended (worse), as on TfL's site |
+- Bus 38 route page, live: 44 + 45 stops with next buses, 2.1 s cold, 13 ms cached, 10 KB. Times progress
+  along the route (5 → 6 → 9 → 11 min). Budget test: 4 TfL calls cold, 0 within 30 s, 2 after; 10
+  concurrent viewers → 1 fetch.

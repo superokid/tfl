@@ -46,7 +46,7 @@ outcome, a false alarm the next worst.
 | Line | `/api/line/:id`: live check + next trains | 1 + check stops | edge 30 s |
 | Check every line | `/api/checks`: all verdicts, on button press | ~42 | D1 snapshot `checks` |
 | Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
-| Bus route | `/api/bus/:route` | 1 | edge 60 s |
+| Bus route | `/api/bus/:route`: status + every stop with next buses | 2 (+2 stop order, cached a day) | edge 30 s |
 | Bus stop search | `/api/search?q=` (≥ 3 chars) | 1 | edge 1 day |
 
 D1 snapshots: < 30 s fresh; 30–90 s served while the lease winner refreshes in `waitUntil`; > 90 s refreshed
@@ -152,7 +152,8 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
   trains at both check stations; "How we checked" evidence.
 - **Station / bus stop:** each line's status with live departures by platform; bus stops list routes with
   destination and next 3 times.
-- **Bus route:** TfL's status and message (not checked against live buses).
+- **Bus route:** TfL's status and message, then a direction toggle and every stop in order with its next
+  3 buses (stop letters as on the flag); tap a stop for its board. Not checked against live buses.
 - States: loading skeleton, stale banner, device copy when offline, retry, "paused" after 10 min idle.
 - AA contrast, colour never the only signal, 320 px, dark mode. No TfL logo; "Powered by TfL Open Data".
 

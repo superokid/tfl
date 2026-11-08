@@ -1,8 +1,5 @@
 # ADR-004: Text-first list, no map
 
-- **Status:** Accepted
-- **Date:** 2026-11-08
-
 ## Context
 The tool must be "fast and clean on a phone". Its job is a comparison: *TfL says X, services show Y*.
 
@@ -18,6 +15,7 @@ English, with the evidence one tap away. Matching lines are collapsed below. No 
 | Per-line station strip diagram | A good extra for showing gaps visually; deferred, and listed as a possible enhancement. |
 
 ## Consequences
-- The bundle stays under the 50 KB budget, and the important information is visible without interaction.
+- The bundle stays within budget (< 80 KB gzipped in total, app code < 20 KB; React itself is ~60 KB),
+  and the important information is visible without interaction.
 - Fully accessible as semantic HTML.
 - Less visual "wow"; the strip diagram is the path to adding it later without a map's weight.

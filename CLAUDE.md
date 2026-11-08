@@ -11,11 +11,16 @@ These rules apply to every AI-assisted change in this repository.
 - Never commit, log, print or echo secrets. `TFL_APP_KEY` lives only in `.dev.vars` (local, gitignored)
   and in `wrangler secret` (production). Never ask the user to paste a key into chat.
 - Never send the TfL key to the browser, or put it in fixtures, test output or error messages.
+  The key is the `app_key` query parameter, so a TfL URL is a secret: build it only with the URL helper,
+  and log or throw it only after redacting.
 - Never deploy, push, merge or rewrite git history without the user's explicit go-ahead.
 - Never squash or amend published commits.
 - Never add polling for live status or arrivals (ADR-001). Only reference data is refreshed in the background.
 - Never hardcode what the TfL API can provide (ADR-005). Put exceptions in `overrides.ts`, with a reason.
-- Never add a UI component library or a heavy dependency without asking. The bundle budget is < 50 KB gzipped.
+- Never add a UI component library or a heavy dependency without asking. The bundle budget is < 80 KB
+  gzipped in total, with app code (everything except React) < 20 KB.
+- Never let a fallback normal gap, empty predictions or a frozen feed produce a mismatch verdict. Those
+  are `CANT_VERIFY`.
 - Never use the TfL roundel or logo, or imply TfL endorsement.
 
 ## Always
@@ -24,8 +29,11 @@ These rules apply to every AI-assisted change in this repository.
 - Keep the rules engine pure: no I/O and no `Date.now()`; pass `now` in. Evaluate times in `Europe/London`.
 - Write the test first for rules and data-layer behaviour. Every failure path in the spec has a test.
 - Keep thresholds and tunable numbers in the single config file, never inline.
-- Prefer showing `CANT_VERIFY` over guessing. A false "OK" is the worst outcome.
-- Keep within free-tier limits: ≤ 48 TfL calls per invocation, small payloads, minimal D1 writes.
+- Prefer showing `CANT_VERIFY` over guessing. A false "OK" is the worst outcome; a false alarm is next.
+- Keep within free-tier limits: ≤ 50 subrequests per invocation **including D1 calls** (≤ 40 TfL,
+  ≤ 6 D1), at most 6 fetches in flight, 10 ms CPU, small payloads, minimal D1 writes.
+- Log each AI session's key prompts and corrections in `PROMPTS.md`, and time spent in
+  `docs/time-log.md`, as the work happens.
 - Make small, focused commits with clear messages, one logical change each. Check the diff for secrets
   before every commit.
 - Say plainly what is unverified or unfinished. Don't claim something works without having checked it.
@@ -33,7 +41,8 @@ These rules apply to every AI-assisted change in this repository.
 ## Conventions
 - TypeScript `strict`. No `any` without a comment explaining why.
 - Validate TfL responses at the boundary; treat everything from the network as untrusted.
-- Timeouts on every outbound fetch (5 s, `AbortSignal`).
+- Timeouts on every outbound fetch (5 s, `AbortSignal`), started when the call is sent, not when it
+  is queued in the concurrency limiter.
 - Mobile-first CSS, semantic HTML, colour never the only signal.
 - Commit messages: imperative mood, e.g. `Add stale snapshot fallback to /api/status`.
 

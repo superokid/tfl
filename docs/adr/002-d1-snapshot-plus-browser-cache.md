@@ -1,28 +1,23 @@
 # ADR-002: D1 snapshot on the server, browser cache on the device
 
-- **Status:** Accepted
-- **Date:** 2026-11-08
-
 ## Context
-The tool must survive TfL outages and repeated requests. During an outage, **anyone** opening the app,
-including a first-time visitor, should see the last known status and how old it is.
+During a TfL outage, any visitor, including a first-time one, should see the last known status and
+its age. A phone with no signal should still open the app.
 
 ## Decision
-- **D1** stores the latest good snapshot, with a timestamp (one row, overwritten). It's the shared cache
-  for ADR-001 and the fallback during outages.
-- **HTTP caching** (`Cache-Control: max-age=15`) makes repeat loads on the same device instant.
-- **`localStorage`** keeps the last good result on the device, for a bad phone signal or offline use.
+- **D1:** one snapshot row, overwritten. Shared cache, refresh lease, outage fallback.
+- **HTTP cache:** `max-age = 15 − age`.
+- **`localStorage`:** last good result.
+- **Service worker:** app shell only, so the page opens offline.
 
-## Alternatives considered
+## Alternatives
 | Option | Why not |
 |---|---|
-| Browser cache only | First-time visitors get nothing during an outage. Each browser fetches TfL separately, so there's no rate-limit protection. Gone after clearing data or in private mode. |
-| Workers KV | Free tier allows 1,000 writes/day; a 15 s refresh can need ~5,760. KV is also eventually consistent (up to ~60 s). |
-| Cache API | Cloudflare can evict entries at any time, and each data centre has its own copy, so it can't be relied on as an outage fallback. |
-| Durable Object | Would also coalesce concurrent fetches, but adds complexity we don't need at this scale. Worth revisiting if the race in ADR-001 matters. |
+| Browser cache only | Nothing for first-time visitors; no rate-limit protection |
+| Workers KV | 1,000 writes/day free; eventually consistent |
+| Cache API | Evictable, per data centre |
+| Durable Object | A second store; the D1 lease does the same job |
 
 ## Consequences
-- Outage fallback works for every visitor, globally.
-- D1 usage stays tiny: at most ~6k writes/day against a 100k limit, and one row.
-- D1 is a single region (`weur`, close to London users and TfL): about 10–30 ms per read.
-- If D1 itself fails, the API falls back to fetching TfL directly, and the browser falls back to `localStorage`.
+- ≈ 18k D1 writes/day worst case, against 100k. D1 calls count as subrequests, so batch them.
+- D1 down → fetch TfL directly, memoised per isolate for 15 s.

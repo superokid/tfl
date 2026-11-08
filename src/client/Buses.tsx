@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { type BusTimes, isNearbyBody, type NearbyStop } from '../shared/api';
-import { NEARBY } from '../shared/config';
+import { DISPLAY, NEARBY } from '../shared/config';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
-import { useBusStops, useIndex } from './Search';
 import { Updated } from './ui';
-import { formatDue, searchRoutes } from './view';
+import { formatDue } from './view';
 
 /** "38 · to Victoria · 2 min, 9 min, 14 min": one route and destination at a stop. */
 export function BusTimesRow({ row, now }: { row: BusTimes; now: number }) {
@@ -65,9 +64,9 @@ function useWhere(): [Where, () => void] {
 const NOTES: Record<Exclude<Where['state'], 'at'>, string> = {
   off: 'See the next buses at the stops around you. Your location is rounded to about 100 m and never stored.',
   locating: 'Finding where you are…',
-  denied: 'Location is turned off for this site. Search for your stop by name below instead.',
-  failed: "Couldn't get your location. Try again, or search for your stop below.",
-  outside: 'You seem to be outside London. Search for a stop by name above.',
+  denied: 'Location is turned off for this site. Search for your stop by name at the top instead.',
+  failed: "Couldn't get your location. Try again, or search for your stop at the top.",
+  outside: 'You seem to be outside London. Search for a stop by name at the top.',
 };
 
 function NearYou({ idle }: { idle: boolean }) {
@@ -107,11 +106,9 @@ function NearYou({ idle }: { idle: boolean }) {
   );
 }
 
-const ROWS_PER_STOP = 4;
-
 function NearStop({ stop, now }: { stop: NearbyStop; now: number }) {
   const rows = stop.buses.filter((r) => r.times.some((t) => t > now - 30_000));
-  const more = rows.length - ROWS_PER_STOP;
+  const more = rows.length - DISPLAY.nearbyRowsPerStop;
   const to = href({ page: 'station', id: stop.id });
   return (
     <li className="card near-stop">
@@ -134,7 +131,7 @@ function NearStop({ stop, now }: { stop: NearbyStop; now: number }) {
         <p className="small muted">No buses due in the next half hour.</p>
       ) : (
         <ul className="bus-departures">
-          {rows.slice(0, ROWS_PER_STOP).map((r) => (
+          {rows.slice(0, DISPLAY.nearbyRowsPerStop).map((r) => (
             <BusTimesRow key={`${r.routeId}-${r.destination}`} row={r} now={now} />
           ))}
         </ul>
@@ -148,14 +145,8 @@ function NearStop({ stop, now }: { stop: NearbyStop; now: number }) {
   );
 }
 
-/** Buses, stop first: saved stops, a box for a stop name or route number, then the stops near me. */
+/** Buses, stop first: saved stops and routes, then the stops near me. Search is the box at the top. */
 export function BusTab({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
-  const [q, setQ] = useState('');
-  const index = useIndex(true);
-  const query = q.trim();
-  const routes = index && query ? searchRoutes(index.routes, query, 8) : [];
-  const routeLike = routes.length > 0 && /\d/.test(query);
-  const { stops, loading } = useBusStops(routeLike ? '' : query);
   const savedBus = saved.filter((s) => s.route.page === 'bus' || (s.route.page === 'station' && s.route.id.startsWith('490')));
 
   return (
@@ -176,42 +167,7 @@ export function BusTab({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         </ul>
       )}
 
-      <label className="field">
-        <span className="small muted">Find a stop or route</span>
-        <input type="search" inputMode="search" placeholder="Stop name, or route like 38" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
-      {query && (
-        <div className="results" aria-live="polite">
-          {routeLike && (
-            <ul className="route-grid">
-              {routes.map((r) => (
-                <li key={r.id}>
-                  <a className="route-badge route-badge-big" href={href({ page: 'bus', id: r.id })}>
-                    {r.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          {!routeLike &&
-            (stops.length > 0 ? (
-              <ul>
-                {stops.map((s) => (
-                  <li key={s.id}>
-                    <a className="result" href={href({ page: 'station', id: s.id })}>
-                      <span className="result-text">
-                        <span>{s.name}</span>
-                        {s.towards && <span className="small muted">towards {s.towards}</span>}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="small muted">{query.length < 3 ? 'Type at least 3 letters of the stop name.' : loading ? 'Searching stops…' : `No stop or route matches "${query}".`}</p>
-            ))}
-        </div>
-      )}
+      {savedBus.length === 0 && <p className="small muted">Search a stop or route number at the top, then ☆ Save it to see it here.</p>}
 
       <NearYou idle={idle} />
     </section>

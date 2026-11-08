@@ -5,7 +5,8 @@ Passengers at a bus stop want "how long until my bus comes here?", not a route n
 route search. User request: "just put the station location, and show how many minutes for the next bus".
 
 ## Decision
-- Bus tab order: saved stops and routes, one box for a stop name or route number, then **Near you**.
+- Bus tab order: saved stops and routes, then **Near you**. Stops and routes are found with the search box
+  at the top of every page (a second box on the tab was dropped: two stacked boxes did the same thing).
 - "Use my location" (no prompt on load; automatic only if the browser already allows it). The phone rounds
   the position to 3 decimals (~110 m × 70 m) before sending it; the Worker never logs it.
 - `GET /api/nearby?lat&lon`: the 5 closest stops that some route serves, each with its next buses per route

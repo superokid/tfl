@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import worker from '../../src/worker/index';
 import { isHealthBody } from '../../src/shared/api';
 
-const DUMMY_KEY = 'dummy-key-must-never-leak-0123456789';
+// Deliberately fake and low-entropy so secret scanners don't flag it; distinctive enough to grep for.
+const DUMMY_KEY = 'NOT-A-REAL-KEY-NOT-A-REAL-KEY';
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
   return {

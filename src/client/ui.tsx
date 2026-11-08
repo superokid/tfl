@@ -1,0 +1,102 @@
+/** Small shared pieces used by every page. */
+import type { ReactNode } from 'react';
+import type { SavedItem } from './saved';
+import { formatAge, statusTone, type Tone } from './view';
+import type { Expected } from '../shared/rules/types';
+import { prettyStatus } from './view';
+
+export function Updated({
+  age,
+  stale,
+  loading,
+  paused,
+  onRefresh,
+}: {
+  age: number | null;
+  stale: boolean;
+  loading: boolean;
+  paused: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="updated">
+      <p className="small muted" aria-live="polite">
+        {age === null ? (
+          loading ? 'Loading live data…' : ''
+        ) : (
+          <>
+            <span className={`dot ${stale ? 'dot-warn' : 'dot-live'}`} aria-hidden="true" />
+            {stale ? 'Last updated' : 'Live · updated'} {formatAge(age)}
+            {paused && ' · paused, tap to refresh'}
+          </>
+        )}
+      </p>
+      <button type="button" className="refresh" onClick={onRefresh} disabled={loading} aria-label="Refresh">
+        <span aria-hidden="true" className={loading ? 'spin' : ''}>
+          ↻
+        </span>
+      </button>
+    </div>
+  );
+}
+
+export function StaleBanner({ show, deviceCopy, age, error }: { show: boolean; deviceCopy: boolean; age: number; error: string | null }) {
+  if (!show) return null;
+  return (
+    <div className="banner banner-warn" role="status">
+      {deviceCopy
+        ? `${error ?? "Can't reach the service"}. Showing what this phone last saw, ${formatAge(age)}.`
+        : `TfL isn't responding. Showing information from ${formatAge(age)}.`}
+    </div>
+  );
+}
+
+export function LoadError({ error, onRetry, what }: { error: string | null; onRetry: () => void; what: string }) {
+  return (
+    <div className="card empty" role="alert">
+      <p>
+        Can't load {what} right now{error ? ` (${error})` : ''}.
+      </p>
+      <button className="button" onClick={onRetry}>
+        Try again
+      </button>
+    </div>
+  );
+}
+
+const TONE_ICON: Record<Tone, string> = { good: '✓', minor: '!', major: '!', closed: '✕', unknown: '?' };
+
+/** TfL's status in plain words, with an icon so colour is never the only signal. */
+export function StatusText({ tflSays, severity, big = false }: { tflSays: string; severity: Expected | null; big?: boolean }) {
+  const tone = statusTone(severity);
+  return (
+    <span className={`status status-${tone} ${big ? 'status-big' : ''}`}>
+      <span className="status-icon" aria-hidden="true">
+        {TONE_ICON[tone]}
+      </span>
+      {prettyStatus(tflSays)}
+    </span>
+  );
+}
+
+export function SaveButton({ item, saved, onToggle }: { item: SavedItem; saved: boolean; onToggle: (i: SavedItem) => void }) {
+  return (
+    <button type="button" className={`save ${saved ? 'save-on' : ''}`} onClick={() => onToggle(item)} aria-pressed={saved}>
+      <span aria-hidden="true">{saved ? '★' : '☆'}</span> {saved ? 'Saved' : 'Save'}
+    </button>
+  );
+}
+
+export function PageHead({ colour, title, children }: { colour?: string; title: string; children?: ReactNode }) {
+  return (
+    <div className="page-head" style={colour ? { borderLeftColor: colour } : undefined}>
+      <a href="#" className="back">
+        ← Home
+      </a>
+      <div className="page-title">
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}

@@ -15,7 +15,8 @@ outcome, a false alarm the next worst.
 
 - **Rail** (Tube, Elizabeth, DLR, Overground, Tram, Cable Car): checked on every refresh. Lines with no
   predictions (Cable Car) are status-only.
-- **Any rail station:** search and live departures ([ADR-008](adr/008-station-search.md)). Buses: not yet.
+- **Any rail station and bus stop:** search and live departures ([ADR-008](adr/008-station-search.md), [ADR-011](adr/011-fetch-per-screen.md)).
+- **Bus routes:** TfL status on demand; buses are not checked against live predictions.
 - **Out:** history, map ([ADR-004](adr/004-text-list-no-map.md)), accounts, branch-only disruptions
   (known limit).
 - Nothing the API provides is hardcoded ([ADR-005](adr/005-reference-data-from-api.md)). Exceptions go
@@ -37,32 +38,21 @@ outcome, a false alarm the next worst.
 
 ## 4. Data
 
-### 4.1 Live data: on request, never polled ([ADR-001](adr/001-fetch-on-request-not-polling.md), [ADR-006](adr/006-stale-while-revalidate-with-refresh-lease.md))
+### 4.1 Live data: per screen, on request ([ADR-011](adr/011-fetch-per-screen.md); SWR and lease: [ADR-006](adr/006-stale-while-revalidate-with-refresh-lease.md))
 
-**`GET /api/status`**
-1. One `db.batch()`: snapshot, lease, reference data.
-2. < 15 s old → return it.
-3. 15–60 s → return it; if the lease is won, refresh in `waitUntil`.
-4. \> 60 s → if the lease is won, refresh inline; otherwise return it.
-5. Lease: `UPDATE refresh_lease SET until = :now+20s WHERE id=1 AND until < :now`; refresh only if
-   `changes() = 1`.
-6. Refresh:
-   - rail status, 1 call (no `?detail=true`)
-   - `?detail=true` only for lines with a partial status
-   - arrivals: 1 call per check station, `/Line/{ids}/Arrivals/{stop}`
-   - ≤ 40 calls; lines over the cap → `CANT_VERIFY` ("call budget")
-7. Run the rules, overwrite the snapshot row, return it.
-8. Failures:
-   - status call fails → stored snapshot, `stale: true`
-   - arrivals call fails → reuse that line's verdict if < 2 min old, else `CANT_VERIFY`
-   - invalid 200 body = failure
-   - never overwrite a good snapshot with a failed fetch
-   - no snapshot and TfL down → `503`, `no-store`
-   - D1 down → fetch TfL directly, memoise per isolate for 15 s, log it
-9. `Cache-Control: max-age = max(1, 15 − age)`. The response includes `checkedAt` and `serverNow`.
+| Screen | Endpoint | TfL calls | Cache |
+|---|---|---|---|
+| Home | `/api/lines`: statuses (+ recent check verdicts) | 1–2 | D1 snapshot `lines` |
+| Line | `/api/line/:id`: live check + next trains | 1 + check stops | edge 30 s |
+| Check every line | `/api/checks`: all verdicts, on button press | ~42 | D1 snapshot `checks` |
+| Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
+| Bus route | `/api/bus/:route` | 1 | edge 60 s |
+| Bus stop search | `/api/search?q=` (≥ 3 chars) | 1 | edge 1 day |
 
-**`GET /api/bus/:routeId`:** `routeId` must be in the known route list, else `404`. Same pattern, one
-row and lease per route. Calls: status + 2 stops.
+D1 snapshots: < 30 s fresh; 30–90 s served while the lease winner refreshes in `waitUntil`; > 90 s refreshed
+inline. TfL down or invalid body → last good snapshot, `stale: true`, 10 s back-off. D1 down → direct
+TfL call memoised per isolate. Edge-cached endpoints share one in-flight fetch and an in-memory limit
+(60 calls/min per instance), and serve the last good copy stale on failure.
 
 **Budget:** an atomic per-minute counter in D1 (`… RETURNING count`), reserved before a refresh.
 Above 400/min, serve stored data marked stale.
@@ -147,31 +137,24 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
   time, and a sentence: *"TfL says Good Service, but the next southbound train at Euston is
   14 minutes away (usually 3)."*
 
-## 6. UI
+## 6. UI ([ADR-011](adr/011-fetch-per-screen.md))
 
-A status page passengers can use instead of TfL's: official status, TfL's own messages, live next trains,
-and whether the status matches what's running.
+Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 
-- **Header:** title, "updated 12s ago" (server clock), refresh button.
-- **Headline:** e.g. "1 line doesn't match what's running" or "6 of 21 match · 13 can't be checked · 1 closed".
-- **Mismatches first** as full cards (line colour, our sentence, next trains, "How this was checked").
-- **All lines** below, alphabetical: one compact row each (name, TfL status, verdict badge). Tapping
-  expands TfL's message, next trains at both check stations, and the evidence. `/#<lineId>` opens a line.
-- **Next trains:** up to 6 per direction with destination, counting down on the server clock ("Due",
-  "3 min"); boards say so when TfL's call failed or nothing is predicted.
-- A mismatch sentence says when the gap starts, so it can be checked against the board.
-
-| State | Shows |
-|---|---|
-| Stale | "TfL isn't responding, showing information from 4 min ago" |
-| No data | Message + retry |
-| Loading | Skeleton |
-| Offline / API down | Last `localStorage` result with its age |
-
-- Auto-refresh every 30 s while visible (quiet); manual refresh shows a spinner.
-- AA contrast, colour never the only signal, 320 px, dark mode.
-- No TfL logo or endorsement. Credit "Powered by TfL Open Data".
-- Snapshot shape is versioned (`SNAPSHOT_VERSION`): a row from an older deploy is ignored and refreshed.
+- **Search** (top of every page): stations and bus routes from the index (no TfL call), bus stops from TfL
+  (≥ 3 chars, 400 ms after typing). Stop results show "towards …".
+- **Saved:** lines, stations, stops and routes as one-tap chips (device only).
+- **Home:** mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus; they wrap, never hidden). Lines as
+  TfL lists them: problems first, then A–Z; status in plain words with an icon. Live-check note only when
+  it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
+  mismatches. "Check every line against live trains" runs the full check on request.
+- **Line:** TfL's status and message; "Live trains" card in plain words (why it couldn't check, if so); next
+  trains at both check stations; "How we checked" evidence.
+- **Station / bus stop:** each line's status with live departures by platform; bus stops list routes with
+  destination and next 3 times.
+- **Bus route:** TfL's status and message (not checked against live buses).
+- States: loading skeleton, stale banner, device copy when offline, retry, "paused" after 10 min idle.
+- AA contrast, colour never the only signal, 320 px, dark mode. No TfL logo; "Powered by TfL Open Data".
 
 ### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))
 Refresh ≤ every 30 s, 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client

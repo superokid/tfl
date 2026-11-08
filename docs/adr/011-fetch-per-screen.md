@@ -1,0 +1,34 @@
+# ADR-011: Each screen fetches only its own data, when opened
+
+Refines ADR-001/006: still on request, never polled, but no longer "everything at once".
+
+## Context
+Every home-page refresh fetched arrivals for all 21 lines (~42 TfL calls, ~6 s cold) although a passenger
+usually wants one line, one station or one bus. User request: "dont fetch everything at once, just fetch on
+user request". Bus users had nothing to use.
+
+## Decision
+| Screen | Endpoint | TfL calls | Cache |
+|---|---|---|---|
+| Home: status per mode | `/api/lines` | 1–2 | D1 snapshot `lines` (outage fallback) |
+| Line: live check + next trains | `/api/line/:id` | 1 + its check stops | edge 30 s, shared in-flight |
+| "Check every line" button | `/api/checks` | ~42 | D1 snapshot `checks`; home shows its verdicts for 10 min |
+| Station or bus stop | `/api/station/:id` | 1–4 | edge 30 s |
+| Bus route | `/api/bus/:route` | 1 | edge 60 s |
+| Bus stop search | `/api/search?q=` | 1 per new query | edge 1 day |
+| Search index | `/api/index` | 0 (generated) | browser 1 day |
+
+UI: mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus), TfL's status in plain words first, the
+live check as a short note only when it adds something, one search box for stations, bus stops and routes,
+saved favourites on the device.
+
+## Alternatives
+| Option | Why not |
+|---|---|
+| Keep the all-lines refresh behind the home page | ~42 calls per refresh; slow cold start; mostly unused |
+| All bus statuses in one call | ~800 KB, 18 s when measured |
+
+## Consequences
+- Home cold load ~2 s (was ~6 s); a line ~1.3 s; a bus stop ~0.3 s.
+- The home page only shows mismatches someone checked in the last 10 min (or after "Check every line").
+- Snapshots and leases are keyed (`lines`, `checks`; migration 0003); costs per refresh unchanged (2 writes).

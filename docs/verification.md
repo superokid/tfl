@@ -51,3 +51,12 @@ What was checked against live TfL data, and what it changed. Newest first.
 
 **Found by the load test:** station cache expiry under load caused a stampede (38 fetches, 5 × 503).
 Concurrent requests for a station now share one in-flight fetch.
+
+## 2026-11-08, passenger-first redesign (ADR-011), dev server against live TfL
+| Check | Result |
+|---|---|
+| `/api/lines` cold | 1.95 s, 5 KB (was ~6 s): 1–2 TfL calls, no arrivals |
+| `/api/line/victoria` | 1.3 s, 3 KB; `/api/station/490000173RC` (bus stop) 0.3 s; `/api/bus/38` 3.3 s cold |
+| Phone screenshots, 360 px, light + dark (CDP-driven, incl. typing in search) | Home, line, station, bus stop, bus route, bus tab, search for "oxford" and "38" |
+| Found and fixed in screenshots | Horizontal overflow from the tab bar; Bus tab off-screen; bus destinations truncated; duplicate station heading |
+| Status ranking | Bakerloo "Severe Delays + Part Suspended" ranks as part-suspended (worse), as on TfL's site |

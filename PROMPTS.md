@@ -97,3 +97,14 @@ Sample of prompts used (Claude Code), with corrections.
   (from git history), what isn't finished.
 - Caught while writing the deploy steps: an auto-provisioned D1 would be created near the deployer (UTC+8),
   far from London users, so the README now creates it in `weur` first.
+
+## 2026-11-08: passenger-first redesign
+- "make the design user friendly. currently it confusing for user who use bus, train, etc. improve overall UX
+  and fit what the user really need."
+- Mid-build: "I think dont fetch everything at once. just fetch on user request with better UI". Each screen now
+  fetches only its own data: home statuses (1–2 calls instead of ~42; 2 s cold instead of 6 s), a line's check
+  when opened, "Check every line" only on tap (ADR-011).
+- Buses added on demand: route status (the all-routes call measured ~800 KB / 18 s, so per route), stop search
+  keeping TfL's "towards" so same-named stops can be told apart, live stop departures.
+- Phone screenshots found: page overflow from the scrolling tab bar (grid min-width), the Bus tab hidden
+  off-screen (tabs now wrap), bus destinations truncated, a duplicated station heading. All fixed and re-shot.

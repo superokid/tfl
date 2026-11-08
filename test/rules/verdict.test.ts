@@ -97,6 +97,59 @@ describe('STALE_ALERT', () => {
   });
 });
 
+describe('STALE_ALERT is not fooled by what TfL shows inside a live suspension (Phase 1, Bakerloo)', () => {
+  const both = (stopId: string, out: ReturnType<typeof preds>, inb: ReturnType<typeof preds>) =>
+    station(stopId, ok([...out, ...inb]), [dirRef('outbound', 3), dirRef('inbound', 3)], stopId);
+  const suspended = [status('Part Suspended', { affectedStopIds: ['harlesden', 'willesden'] })];
+
+  it('unconfirmed vehicles (no destination) never prove service is running', () => {
+    const ghost = { confirmed: false };
+    const l = line(suspended, [
+      both('harlesden', preds(now, NORMAL, 'outbound', 'northbound', 0.5, ghost), preds(now, NORMAL, 'inbound', 'southbound', 0.5, ghost)),
+      both('willesden', preds(now, NORMAL, 'outbound', 'northbound', 0.5, ghost), preds(now, NORMAL, 'inbound', 'southbound', 0.5, ghost)),
+    ]);
+    expect(judgeLine(l, now).verdict).not.toBe('STALE_ALERT');
+  });
+
+  it('a boundary stop (trains terminate one way, start the other) is not "running normally"', () => {
+    const terminating = { terminatesHere: true };
+    const edge = (id: string) =>
+      both(id, preds(now, NORMAL, 'outbound', 'northbound', 0.5, terminating), preds(now, NORMAL, 'inbound', 'southbound'));
+    const l = line([status('Part Suspended', { affectedStopIds: ['queens-park', 'harlesden'] })], [edge('queens-park'), edge('harlesden')]);
+    expect(judgeLine(l, now).verdict).not.toBe('STALE_ALERT');
+  });
+
+  it('needs every direction running: one direction alone is not enough', () => {
+    const l = line(suspended, [
+      both('harlesden', preds(now, NORMAL, 'outbound', 'northbound'), []),
+      both('willesden', preds(now, NORMAL, 'outbound', 'northbound'), []),
+    ]);
+    expect(judgeLine(l, now).verdict).not.toBe('STALE_ALERT');
+  });
+
+  it('through services in both directions are still flagged', () => {
+    const l = line(suspended, [
+      both('harlesden', preds(now, NORMAL, 'outbound', 'northbound'), preds(now, NORMAL, 'inbound', 'southbound')),
+      both('willesden', preds(now, NORMAL, 'outbound', 'northbound'), preds(now, NORMAL, 'inbound', 'southbound')),
+    ]);
+    expect(judgeLine(l, now).verdict).toBe('STALE_ALERT');
+  });
+
+  it('gap checks count unconfirmed trains, so missing destinations never fake a gap', () => {
+    const mixed = (n: number) => preds(now, NORMAL).map((p, i) => ({ ...p, confirmed: i % 2 === n }));
+    const l = line([status('Good Service')], [station('Euston', ok(mixed(0))), station('Brixton', ok(mixed(1)))]);
+    expect(judgeLine(l, now).verdict).toBe('MATCH');
+  });
+
+  it('platforms without a compass word give a sentence without one', () => {
+    const l = line([status('Good Service')], [
+      station('Bond Street', ok(preds(now, LONG, 'outbound', ''))),
+      station('Whitechapel', ok(preds(now, LONG, 'outbound', ''))),
+    ]);
+    expect(judgeLine(l, now).summary).toBe('TfL says Good Service, but the next train at Bond Street is 14 minutes away (usually 3).');
+  });
+});
+
 describe('CANT_VERIFY: never a guessed "OK"', () => {
   it('empty predictions at both stations', () => {
     expect(judgeLine(twoStations([], []), now)).toMatchObject({

@@ -21,11 +21,16 @@ export interface Prediction {
   vehicleId: string;
   /** Stable key used to match reference data: TfL `direction`, else derived from `platformName`. */
   directionKey: string;
-  /** Passenger wording, e.g. "southbound", "eastbound", "towards Stratford". */
+  /** Passenger wording from the platform, e.g. "southbound"; empty when the platform has none ("Platform 2"). */
   directionLabel: string;
   expectedArrival: number;
   /** TfL `timing.read`: when the prediction was produced. */
   timingRead: number;
+  /** Has a destination. TfL lists unconfirmed vehicles (no destination, "Check Front of Train"), seen
+   * moving inside a suspended section; they never count as proof that a service is running. */
+  confirmed: boolean;
+  /** Terminates at this stop: at a suspension boundary these arrive but don't continue. */
+  terminatesHere: boolean;
 }
 
 export type ArrivalsFailure = 'failed' | 'invalid' | 'budget';

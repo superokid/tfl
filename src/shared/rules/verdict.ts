@@ -38,22 +38,28 @@ function serviceAt(ref: DirectionRef, now: number): ServiceState {
   return { kind: 'outside' };
 }
 
-function stationEvidence(s: CheckStation, line: LineInput, now: number): DirectionEvidence[] {
+/**
+ * `throughOnly`: count only confirmed services that don't terminate here. Used when the evidence must
+ * prove a service *is* running (STALE_ALERT), so ghost or terminating trains can't fake it.
+ */
+function stationEvidence(s: CheckStation, line: LineInput, now: number, throughOnly: boolean): DirectionEvidence[] {
   const fallbackGap = FALLBACK_NORMAL_GAP_MIN[line.mode];
-  const predictions = s.arrivals.ok ? s.arrivals.predictions : [];
-  const keys = [...new Set([...s.directions.map((d) => d.directionKey), ...predictions.map((p) => p.directionKey)])];
+  const all = s.arrivals.ok ? s.arrivals.predictions : [];
+  const predictions = throughOnly ? all.filter((p) => p.confirmed && !p.terminatesHere) : all;
+  const keys = [...new Set([...s.directions.map((d) => d.directionKey), ...all.map((p) => p.directionKey)])];
   if (keys.length === 0) keys.push('*'); // failed call and no timetable: one placeholder row
 
   return keys.map((key) => {
     const ref = s.directions.find((d) => d.directionKey === key);
     const own = predictions.filter((p) => p.directionKey === key);
+    const label = all.find((p) => p.directionKey === key)?.directionLabel ?? '';
     const service: ServiceState = ref ? serviceAt(ref, now) : { kind: 'in', normalGapMin: null };
     const normalGapMin = (service.kind === 'in' ? service.normalGapMin : null) ?? fallbackGap;
     const base = {
       stopId: s.stopId,
       stationName: s.name,
       directionKey: key,
-      directionLabel: own[0]?.directionLabel ?? (key === '*' ? 'all directions' : key),
+      directionLabel: label,
       normalGapMin,
       normalGapIsFallback: !(service.kind === 'in' && service.normalGapMin !== null),
       thresholdMin: thresholdFor(normalGapMin),
@@ -89,10 +95,15 @@ function isOver(v: StationView, strict: boolean): boolean {
   return usableOf(v).some((e) => gap(e) > e.thresholdMin && (!strict || !e.normalGapIsFallback));
 }
 
-/** Every usable direction at or under `limit(e)`; `strict` additionally rules out fallback gaps. */
+/**
+ * Every direction usable and at or under `limit(e)`: proof that service runs normally *through* the
+ * station. A boundary stop where one direction only terminates fails this. `strict` rules out fallback gaps.
+ */
 function allUnder(v: StationView, limit: (e: DirectionEvidence) => number, strict: boolean): boolean {
-  const u = usableOf(v);
-  return u.length > 0 && u.every((e) => gap(e) <= limit(e) && (!strict || !e.normalGapIsFallback));
+  return (
+    v.evidence.length > 0 &&
+    v.evidence.every((e) => e.usable && gap(e) <= limit(e) && (!strict || !e.normalGapIsFallback))
+  );
 }
 
 const plural = (noun: string) => (noun.endsWith('s') ? `${noun}es` : `${noun}s`);
@@ -142,11 +153,11 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
 
   // 2. What is each check station expected to see? A partial status applies to its affected stops only.
   const affected = new Set(partials.flatMap((p) => p.affectedStopIds));
-  const views: StationView[] = line.stations.map((station) => ({
-    station,
-    expected: partials.length > 0 && affected.has(station.stopId) ? 'NONE' : base,
-    evidence: stationEvidence(station, line, now),
-  }));
+  const views: StationView[] = line.stations.map((station) => {
+    const expected: Ranked = partials.length > 0 && affected.has(station.stopId) ? 'NONE' : base;
+    const throughOnly = expected === 'NONE' || expected === 'DEGRADED';
+    return { station, expected, evidence: stationEvidence(station, line, now, throughOnly) };
+  });
   const evidence = views.flatMap((v) => v.evidence);
 
   if (partials.length > 0 && !line.stations.some((s) => affected.has(s.stopId))) {
@@ -181,10 +192,11 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
       .reduce((a, b) => (gap(b) / b.normalGapMin > gap(a) / a.normalGapMin ? b : a));
     const mins = Math.round(gap(worst));
     const usual = Math.round(worst.normalGapMin);
+    const dir = worst.directionLabel ? `${worst.directionLabel} ` : '';
     const what =
       worst.gapKind === 'next'
-        ? `the next ${worst.directionLabel} ${noun} at ${worst.stationName} is ${mins} minutes away`
-        : `there's a ${mins}-minute gap between ${worst.directionLabel} ${plural(noun)} at ${worst.stationName}`;
+        ? `the next ${dir}${noun} at ${worst.stationName} is ${mins} minutes away`
+        : `there's a ${mins}-minute gap between ${dir}${plural(noun)} at ${worst.stationName}`;
     return verdict('HIDDEN_DISRUPTION', null, `TfL says ${tflSays}, but ${what} (usually ${usual}).`, evidence);
   }
 

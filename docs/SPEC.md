@@ -96,15 +96,15 @@ Code: `src/shared/rules/`. Input is the domain model in `types.ts`, not raw TfL 
 it happens at the boundary (Phase 4), tested against real fixtures.
 All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`.
 
-### 5.1 Status → expected service (map by description; confirm with `/Line/Meta/Severity`)
+### 5.1 Status → expected service (by description; every rail entry in `/Line/Meta/Severity` is covered)
 
 | Expected | Descriptions |
 |---|---|
-| `NORMAL` | Good Service, No Issues, Information, No Step Free Access |
+| `NORMAL` | Good Service, No Issues, Information, No Step Free Access, Exit Only |
 | `MINOR` | Minor Delays |
 | `DEGRADED` | Severe Delays, Reduced Service, Change of Frequency, Issues Reported, Special Service |
-| `PARTIAL` | Part Suspended, Part Closure, Part Closed, Diverted |
-| `NONE` | Suspended, Not Running |
+| `PARTIAL` | Part Suspended, Part Closure, Part Closed, Diverted, Bus Service |
+| `NONE` | Suspended, Not Running, No Service |
 | `CLOSED` | Planned Closure, Service Closed, Closed |
 | unknown | `CANT_VERIFY`, logged |
 
@@ -115,7 +115,10 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 ### 5.2 Definitions
 
 - **Direction:** evaluated separately (`direction`, else `platformName`).
-- **Predictions:** de-duplicated by vehicle. If `timing.read` is > 3 min old, the feed is frozen and
+- **Predictions:** de-duplicated by vehicle. Gap checks count every prediction; "running normally" counts
+  only confirmed (has a destination) services that don't terminate at the stop, and needs every direction
+  usable (live ghost and boundary cases, see `tfl-api-notes.md`).
+- **Prediction freshness:** If `timing.read` is > 3 min old, the feed is frozen and
   the direction is unusable.
 - **Horizon:** the furthest prediction.
 - **Window:** 30 min if normal gap ≤ 5 min, else 60 min, cut to the horizon.
@@ -142,7 +145,7 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 | `CANT_VERIFY` | Failed, invalid, empty or frozen data; < 2 usable stations; unknown status; `PARTIAL` with no affected stops or no check station in them; status-only line; budget hit; mismatch based on a fallback gap. |
 | `CLOSED` | Expected `CLOSED`, or outside timetable hours. Never a mismatch. |
 
-- Risk: ghost trains during a suspension → false `STALE_ALERT`. Checked in Phase 1.
+- Ghost and boundary trains during a suspension: seen live in Phase 1 and ruled out (§5.2).
 - Evidence: station, direction, normal gap (and whether it's a fallback), observed gap, horizon,
   time, and a sentence: *"TfL says Good Service, but the next southbound train at Euston is
   14 minutes away (usually 3)."*

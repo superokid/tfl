@@ -41,6 +41,7 @@ export function preds(
   directionKey = 'outbound',
   directionLabel = 'southbound',
   readAgoMin = 0.5,
+  extra: Partial<Prediction> = {},
 ): Prediction[] {
   return minutes.map((m, i) => ({
     vehicleId: `${directionKey}-${i}`,
@@ -48,6 +49,9 @@ export function preds(
     directionLabel,
     expectedArrival: at(now, m),
     timingRead: at(now, -readAgoMin),
+    confirmed: true,
+    terminatesHere: false,
+    ...extra,
   }));
 }
 

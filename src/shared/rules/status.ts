@@ -1,11 +1,12 @@
 import type { Expected, StatusInput } from './types';
 
-/** SPEC §5.1. Keys are lower-case; confirm the full list against /Line/Meta/Severity. */
+/** SPEC §5.1. Keys are lower-case. Covers every rail description in /Line/Meta/Severity (fixture-tested). */
 const STATUS_TABLE: Record<string, Expected> = {
   'good service': 'NORMAL',
   'no issues': 'NORMAL',
   information: 'NORMAL',
   'no step free access': 'NORMAL',
+  'exit only': 'NORMAL', // a station-level restriction, not a service change
   'minor delays': 'MINOR',
   'severe delays': 'DEGRADED',
   'reduced service': 'DEGRADED',
@@ -16,8 +17,10 @@ const STATUS_TABLE: Record<string, Expected> = {
   'part closure': 'PARTIAL',
   'part closed': 'PARTIAL',
   diverted: 'PARTIAL',
+  'bus service': 'PARTIAL', // rail replacement buses on a section
   suspended: 'NONE',
   'not running': 'NONE',
+  'no service': 'NONE',
   'planned closure': 'CLOSED',
   'service closed': 'CLOSED',
   closed: 'CLOSED',

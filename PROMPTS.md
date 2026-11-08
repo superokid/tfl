@@ -33,3 +33,12 @@ Sample of prompts used (Claude Code), with corrections.
 - Tests written first (87). One failure was my own test data; fixing it exposed a real case worth a rule:
   a train in 1 min and then nothing until 40 min must count as a long wait, even past the 30 min window.
 - "you allowed to merge each step", then "push still not allowed, only merge": merge locally, ask before push.
+
+## 2026-11-08: Phase 1, API investigation
+- "continue all the next phase, until I can test it on UI"
+  - Live check during a real Bakerloo part-suspension found ghost vehicles inside the suspended section and
+    normal-looking service at the boundary stop. Either would have raised a false "TfL says Suspended, but
+    trains are running". Rule tightened: "running normally" now needs confirmed through-services in every
+    direction.
+  - `/Line/Meta/Severity` had 3 rail descriptions the spec table missed; a fixture test now fails on any
+    unmapped one.

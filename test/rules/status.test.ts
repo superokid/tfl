@@ -23,6 +23,9 @@ describe('mapStatus (SPEC §5.1)', () => {
     ['Planned Closure', 'CLOSED'],
     ['Service Closed', 'CLOSED'],
     ['Closed', 'CLOSED'],
+    ['Exit Only', 'NORMAL'],
+    ['Bus Service', 'PARTIAL'],
+    ['No Service', 'NONE'],
   ] as const)('%s → %s', (description, expected) => {
     expect(mapStatus(description)).toBe(expected);
   });
@@ -32,7 +35,7 @@ describe('mapStatus (SPEC §5.1)', () => {
   });
 
   it('returns null for an unknown description', () => {
-    expect(mapStatus('Bus Service')).toBeNull();
+    expect(mapStatus('Teleporting')).toBeNull();
   });
 });
 

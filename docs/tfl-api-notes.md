@@ -1,31 +1,47 @@
 # TfL API notes
 
-Verified against the live API. `app_key` is a query parameter, so request URLs are secret.
+Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bun scripts/capture-fixtures.ts`).
+`app_key` is a query parameter, so request URLs are secret.
 
-**Status** `/Line/Mode/tube,elizabeth-line,dlr,overground,tram,cable-car/Status`
-- 21 lines. A line can have several statuses (Bakerloo: Severe Delays + Part Suspended).
-- Waterloo & City on Sunday = Planned Closure.
-- `isNow` is unreliable (false inside its own validity period). Use the dates.
-- `affectedStops` is empty unless `?detail=true` (Bakerloo Part Suspended: 10 stops).
-- `?detail=true` for all rail lines ≈ 307 KB.
+**Lines** `/Line/Mode/tube,elizabeth-line,dlr,overground,tram,cable-car`
+- 21 lines. Cable Car id is `london-cable-car`; Elizabeth line id is `elizabeth`.
+
+**Status** `/Line/Mode/{modes}/Status`
+- A line can have several statuses (Bakerloo: Severe Delays + Part Suspended).
+- `isNow` is unreliable: Waterloo & City Planned Closure 04:15–23:59 showed `isNow=false` at 12:12. Use the dates (UTC, `Z`).
+- Good Service has no validity periods.
+- `affectedStops` is empty unless `?detail=true` (≈ 300 KB for all rail lines). It **includes the boundary
+  stops**: "no service between Queen's Park and Harrow" lists Queen's Park.
+- Rail severities include "Exit Only", "Bus Service" and "No Service" (all mapped; see SPEC §5.1).
 
 **Arrivals** `/Line/{ids}/Arrivals/{stop}`
-- Several lines per call works (`bakerloo,central,victoria` at Oxford Circus).
-- Horizon varies: Victoria at Oxford Circus 17 min; Elizabeth at Bond St 118 min.
-- `direction` is inbound/outbound; `platformName` is e.g. "Northbound - Platform 6".
-- `timing.read` is there for frozen-feed checks.
-- Cable Car: always `[]`. Tram: 165 predictions.
+- Several lines per call works. 1–17 KB per call.
+- `direction` (inbound/outbound) is often null on sub-surface lines and the Bakerloo (10/21 at Earl's Court).
+  `platformName` ("Northbound - Platform 4") then names the direction; the same platform appears with a
+  direction on other vehicles in the same response.
+- Elizabeth ("A"/"B") and DLR ("Platform 1") platforms have no compass word; `direction` is set there.
+- **Ghost vehicles:** inside the live Bakerloo suspension, Harlesden and Willesden Junction showed vehicles
+  with no destination, no direction and `towards: "Check Front of Train"`. Boundary stop Queen's Park
+  showed northbound trains terminating there and southbound trains starting there. Rules handle both
+  (SPEC §5.2).
+- Missing destination in normal service is rare (3/21 at Earl's Court).
+- Horizon varies: Victoria at Oxford Circus ~17 min; Elizabeth at Bond St ~118 min.
+- Cable Car: `/Line/london-cable-car/Arrivals` → 404. Status-only.
 
-**Timetable** `/Line/{id}/Timetable/{stop}`
-- At a station that isn't a terminus, it needs `?direction=`, or returns only a disambiguation object.
-- Victoria from Brixton ≈ 325 KB, schedules Mon–Thu / Fri / Sat / Sun.
-- `FrequencyMinutes` is too coarse (one band, 1–5 min). Use `knownJourneys`.
+**Route sequence** `/Line/{id}/Route/Sequence/{direction}`
+- `orderedLineRoutes[].naptanIds` lists each route's stops in order. Northern has 8 routes; Kennington and
+  Camden Town are on all 8. Liberty has 3 stops in total.
+- Northern 130 KB, District 144 KB.
+
+**Timetable** `/Line/{id}/Timetable/{stop}?direction=…`
+- Departures from that stop: `timetable.routes[].schedules[]` with `name` ("Monday - Thursday", "Friday",
+  "Saturday (also Good Friday)", "Sunday") and `knownJourneys` (`hour`, `minute`; hour ≥ 24 after midnight,
+  e.g. Victoria Friday until 26:57).
+- Several routes when branches pass the stop (Northern at Euston: 2).
+- 318–506 KB, parse 1.2–1.5 ms. Some stop/direction pairs 404 (District at Earl's Court, outbound).
 
 **Bus** `/Line/Mode/bus` ≈ 348 KB.
 
-## To verify
-- Horizon per mode, peak and off-peak; how often `timing.read` advances.
-- `/Line/Meta/Severity` list; overnight and Night Tube status.
-- Ghost trains during a suspension.
-- Timetable parse CPU in a Worker (Northern, District); `hour` ≥ 24.
-- Key in a header; responses during a partial TfL outage.
+## Still to verify
+- How often `timing.read` advances; responses during a partial TfL outage.
+- Key in a header instead of the URL.

@@ -34,6 +34,16 @@ export interface ReferenceFile {
   lines: LineFile[];
 }
 
+export interface BusRoute {
+  id: string;
+  name: string;
+}
+
+export interface BusesFile {
+  generatedAt: string;
+  routes: BusRoute[];
+}
+
 export interface StationsFile {
   generatedAt: string;
   stations: import('./derive').StationEntry[];

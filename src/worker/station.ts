@@ -7,7 +7,7 @@ import type { ErrorBody, StationBody } from '../shared/api';
 import { buildBoard } from '../shared/boards';
 import { LIVE } from '../shared/config';
 import type { StationEntry } from '../shared/reference/derive';
-import type { ReferenceFile, StationsFile } from '../shared/reference/types';
+import type { BusesFile, ReferenceFile, StationsFile } from '../shared/reference/types';
 import type { Prediction } from '../shared/rules/types';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
@@ -56,7 +56,11 @@ export class CallLimiter {
   }
 }
 
-export const stationLimiter = new CallLimiter(LIVE.stationCallsPerMinute);
+/** One limit for every on-demand TfL call (stations, bus stops, routes, stop search), per instance. */
+export const onDemandLimiter = new CallLimiter(LIVE.stationCallsPerMinute);
+
+/** A single bus stop (490000173RC). Stop areas (490G…) return no arrivals, so they're not accepted. */
+export const isBusStopId = (id: string) => /^490[0-9]{3,}[A-Z0-9]{0,4}$/.test(id) && !id.startsWith('490G');
 
 /**
  * Requests for the same station while a fetch is running share it (per Worker instance), so a cache
@@ -67,6 +71,7 @@ const inFlight = new Map<string, Promise<StationBody | null>>();
 export interface StationDeps {
   id: string;
   stations: StationsFile;
+  buses: BusesFile;
   reference: ReferenceFile;
   cache: StationCache;
   limiter: CallLimiter;
@@ -84,10 +89,16 @@ function respond(body: StationBody, now: number, stale: boolean): Response {
 async function fetchStation(station: StationEntry, deps: StationDeps): Promise<StationBody | null> {
   const tfl = deps.tfl();
   const bound = Object.fromEntries(deps.reference.lines.map((l) => [l.lineId, l.boundDirections]));
+  let nameFromTfl: string | null = null;
   const results = await Promise.all(
     station.stopIds.map(async (stopId) => {
       try {
-        return { stopId, byLine: parseArrivals(await tfl.getJson(`/StopPoint/${stopId}/Arrivals`), stopId, bound) };
+        const body = await tfl.getJson(`/StopPoint/${stopId}/Arrivals`);
+        const first: unknown = Array.isArray(body) ? body[0] : null;
+        if (first && typeof first === 'object' && typeof (first as { stationName?: unknown }).stationName === 'string') {
+          nameFromTfl ??= (first as { stationName: string }).stationName;
+        }
+        return { stopId, byLine: parseArrivals(body, stopId, bound) };
       } catch (err) {
         console.error('station arrivals failed:', redact(err instanceof Error ? err.message : String(err)));
         return { stopId, byLine: null };
@@ -96,20 +107,32 @@ async function fetchStation(station: StationEntry, deps: StationDeps): Promise<S
   );
   if (results.every((r) => r.byLine === null)) return null;
 
-  const names = new Map(deps.reference.lines.map((l) => [l.lineId, l.lineName]));
-  const lines = station.lines.map((lineId) => {
+  const names = new Map<string, string>([
+    ...deps.buses.routes.map((r): [string, string] => [r.id, r.name]),
+    ...deps.reference.lines.map((l): [string, string] => [l.lineId, l.lineName]),
+  ]);
+  // A bus stop has no index entry: its routes are whatever TfL predicts there, in route order.
+  const lineIds = station.lines.length
+    ? station.lines
+    : [...new Set(results.flatMap((r) => (r.byLine ? [...r.byLine.keys()] : [])))].sort((a, b) =>
+        a.localeCompare(b, 'en', { numeric: true }),
+      );
+  const lines = lineIds.map((lineId) => {
     const answered = results.filter((r) => r.byLine !== null);
     const preds: Prediction[] = answered.flatMap((r) => r.byLine!.get(lineId) ?? []);
     const anyFailed = results.some((r) => r.byLine === null);
     const board = buildBoard(station.id, station.name, preds.length === 0 && anyFailed ? null : preds, deps.now, 6);
     return { lineId, lineName: names.get(lineId) ?? lineId, board };
   });
-  return { stationId: station.id, name: station.name, checkedAt: deps.now, serverNow: deps.now, stale: false, lines };
+  const name = station.name || (nameFromTfl as string | null)?.replace(/\s+/g, ' ').trim() || station.id;
+  return { stationId: station.id, name, checkedAt: deps.now, serverNow: deps.now, stale: false, lines };
 }
 
 export async function handleStation(deps: StationDeps): Promise<Response> {
   const { id, now, cache, limiter } = deps;
-  const station = deps.stations.stations.find((s) => s.id === id);
+  const station: StationEntry | undefined =
+    deps.stations.stations.find((s) => s.id === id) ??
+    (isBusStopId(id) ? { id, name: '', stopIds: [id], lines: [] } : undefined);
   if (!station) {
     return json({ error: 'unknown_station' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
   }

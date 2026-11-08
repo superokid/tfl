@@ -40,7 +40,44 @@ export interface StatusBody extends Snapshot {
   stale: boolean;
 }
 
-/** GET /api/station/:id: live departures at one station, per line. */
+/** GET /api/index: everything the search box needs, so typing never calls TfL for stations or routes. */
+export interface IndexBody {
+  stations: { id: string; name: string; lines: string[] }[];
+  routes: { id: string; name: string }[];
+}
+
+/** GET /api/search?q=: bus stops matching a name (TfL search, cached a day per query). */
+export interface BusStopMatch {
+  id: string;
+  name: string;
+  /** TfL's "towards" text: how passengers tell stops with the same name apart. */
+  towards: string | null;
+}
+
+export interface BusSearchBody {
+  query: string;
+  stops: BusStopMatch[];
+}
+
+/** GET /api/bus/:route: one bus route's status, on demand. */
+export interface BusRouteBody {
+  routeId: string;
+  name: string;
+  /** TfL status descriptions, e.g. ["Good Service"] or ["Special Service"]. */
+  statuses: string[];
+  messages: string[];
+  checkedAt: number;
+  serverNow: number;
+  stale: boolean;
+}
+
+export function isBusRouteBody(value: unknown): value is BusRouteBody {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.routeId === 'string' && Array.isArray(v.statuses) && Array.isArray(v.messages) && typeof v.checkedAt === 'number';
+}
+
+/** GET /api/station/:id: live departures at one station or bus stop, per line or route. */
 export interface StationBody {
   stationId: string;
   name: string;

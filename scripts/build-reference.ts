@@ -15,6 +15,7 @@ import { readTflKey } from './tfl-env.ts';
 const RAIL_MODES = 'tube,elizabeth-line,dlr,overground,tram,cable-car';
 const OUT = 'src/shared/reference/rail.json';
 const STATIONS_OUT = 'src/shared/reference/stations.json';
+const BUSES_OUT = 'src/shared/reference/buses.json';
 const sequences: unknown[] = [];
 const key = readTflKey();
 const limit = createLimiter(6);
@@ -101,6 +102,16 @@ const stations = collectStations(sequences);
 const stationsJson = JSON.stringify({ generatedAt: file.generatedAt, stations });
 if (/app_key=/.test(stationsJson)) throw new Error('key leaked into stations');
 writeFileSync(STATIONS_OUT, `${stationsJson}\n`);
+
+// Bus routes for search (ids and names only; status is fetched per route on demand: the all-routes
+// status call is ~800 KB and took 18 s when measured).
+const busLines = ((await get('/Line/Mode/bus')) ?? []) as Json[];
+const routes = busLines
+  .map((l) => ({ id: String(l.id), name: String(l.name) }))
+  .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+if (routes.length === 0) throw new Error('no bus routes from TfL');
+writeFileSync(BUSES_OUT, `${JSON.stringify({ generatedAt: file.generatedAt, routes })}\n`);
+console.log(`Wrote ${BUSES_OUT} (${routes.length} routes)`);
 
 console.log(`Wrote ${OUT} (${(json.length / 1024).toFixed(1)} KB) and ${STATIONS_OUT} (${stations.length} stations, ${(stationsJson.length / 1024).toFixed(1)} KB) from ${calls} calls`);
 for (const l of built) {

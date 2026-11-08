@@ -1,8 +1,10 @@
 import type { ErrorBody, HealthBody } from '../shared/api';
-import { RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
+import type { IndexBody } from '../shared/api';
+import { BUSES, RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
+import { EdgeJsonCache, handleBusRoute, handleBusSearch } from './bus';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
-import { EdgeStationCache, handleStation, stationLimiter } from './station';
+import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
 import { handleStatus, handleStatusWithoutStore } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
@@ -51,24 +53,36 @@ export default {
       }
     }
 
-    if (url.pathname === '/api/stations') {
-      return json(STATIONS, { headers: { 'Cache-Control': 'public, max-age=86400' } });
+    if (url.pathname === '/api/index') {
+      const body: IndexBody = {
+        stations: STATIONS.stations.map(({ id, name, lines }) => ({ id, name, lines })),
+        routes: BUSES.routes,
+      };
+      return json(body, { headers: { 'Cache-Control': 'public, max-age=86400' } });
     }
 
     const station = /^\/api\/station\/([A-Za-z0-9]{3,20})$/.exec(url.pathname);
-    if (station) {
+    const bus = /^\/api\/bus\/([A-Za-z0-9]{1,6})$/.exec(url.pathname);
+    if (station || bus || url.pathname === '/api/search') {
       if (!env.TFL_APP_KEY) {
         return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
       }
-      return handleStation({
-        id: station[1]!,
-        stations: STATIONS,
-        reference: RAIL_REFERENCE,
-        cache: new EdgeStationCache(),
-        limiter: stationLimiter,
-        tfl: () => createTflClient(env.TFL_APP_KEY),
-        now: Date.now(),
-      });
+      const tfl = () => createTflClient(env.TFL_APP_KEY);
+      const now = Date.now();
+      if (station) {
+        return handleStation({
+          id: station[1]!,
+          stations: STATIONS,
+          buses: BUSES,
+          reference: RAIL_REFERENCE,
+          cache: new EdgeStationCache(),
+          limiter: onDemandLimiter,
+          tfl,
+          now,
+        });
+      }
+      const deps = { buses: BUSES, cache: new EdgeJsonCache(), limiter: onDemandLimiter, tfl, now };
+      return bus ? handleBusRoute(bus[1]!, deps) : handleBusSearch(url.searchParams.get('q'), deps);
     }
 
     return notFound();

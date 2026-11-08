@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isStationBody, type StationBody } from '../../src/shared/api';
 import { LIVE } from '../../src/shared/config';
 import { collectStations } from '../../src/shared/reference/derive';
-import { RAIL_REFERENCE, STATIONS } from '../../src/shared/reference/load';
+import { BUSES, RAIL_REFERENCE, STATIONS } from '../../src/shared/reference/load';
 import { CallLimiter, handleStation, MemoryStationCache, type StationDeps } from '../../src/worker/station';
 import { createTflClient } from '../../src/worker/tfl/client';
 
@@ -22,7 +22,7 @@ function fakeTfl(down = false) {
 }
 
 function deps(id: string, tfl = fakeTfl(), cache = new MemoryStationCache(), limiter = new CallLimiter(LIVE.stationCallsPerMinute), now = NOW): StationDeps {
-  return { id, stations: STATIONS, reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now };
+  return { id, stations: STATIONS, buses: BUSES, reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now };
 }
 
 async function body(res: Response): Promise<StationBody> {

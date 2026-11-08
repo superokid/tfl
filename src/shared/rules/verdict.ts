@@ -214,7 +214,7 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
     return verdict(
       'CANT_VERIFY',
       'fallback-gap',
-      "Services don't look like TfL's status, but there's no timetable to compare against, so this isn't flagged.",
+      "Services are sparser than usual for this kind of line, but TfL publishes no timetable for it to compare against, so this isn't flagged.",
       evidence,
     );
   }

@@ -23,6 +23,14 @@
   // identical on every machine and in CI, whether or not .dev.vars exists.
   "secrets": {
     "required": ["TFL_APP_KEY"]
-  }
-  // D1 binding is added in Phase 3/4 (SPEC §4).
+  },
+  // Snapshot, refresh lease and TfL call budget (ADR-002/006). No database_id: Wrangler provisions the
+  // database on first deploy. Local dev uses a local SQLite file (bun run db:migrate).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tfl-status-vs-reality",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

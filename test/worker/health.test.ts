@@ -19,7 +19,8 @@ async function call(path: string, init?: RequestInit, env: Env = makeEnv()): Pro
     unknown,
     IncomingRequestCfProperties
   >;
-  return worker.fetch(request, env);
+  const ctx = { waitUntil() {}, passThroughOnException() {}, props: {} } as unknown as ExecutionContext;
+  return worker.fetch(request, env, ctx);
 }
 
 describe('GET /api/health', () => {

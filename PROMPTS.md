@@ -49,3 +49,10 @@ Sample of prompts used (Claude Code), with corrections.
 - First generated output was checked by eye and corrected: District picked a shuttle-branch station
   (now weighted by route length); Cable Car had no predictions (override with reason). TfL has no
   timetables for the Elizabeth line or Overground; recorded as a known limit, not worked around.
+
+## 2026-11-08: Phase 4, live data layer
+- Tests for every failure path in SPEC §4.1 run against a fake TfL behind the real client. One failing test
+  showed that after a failure every request retried TfL; added a 10 s back-off.
+- First local run against live TfL: cold refresh 6.2 s, then 25 ms from D1. Read every verdict by hand:
+  DLR predictions only reach 2–13 min ahead (known limit), and Liberty's "can't verify" sentence overstated
+  the evidence, so it was reworded.

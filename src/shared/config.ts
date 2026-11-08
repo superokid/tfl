@@ -56,3 +56,27 @@ export const VEHICLE_NOUN: Record<Mode, string> = {
 };
 
 export const LONDON_TZ = 'Europe/London';
+
+/** Live data layer (SPEC §4.1, ADR-001/006). */
+export const LIVE = {
+  /** Serve the stored snapshot as-is below this age. */
+  freshMs: 15_000,
+  /** Between fresh and this: serve stored, refresh in the background. Above: refresh inline. */
+  staleWhileRevalidateMs: 60_000,
+  /** A refresh holds the lease this long; a crashed refresher's lease expires. */
+  leaseMs: 20_000,
+  /** After a failed refresh, serve stored data without retrying TfL for this long. */
+  failureBackoffMs: 10_000,
+  /** Global TfL call budget per minute (TfL allows 500). */
+  budgetPerMinute: 400,
+  /** Max TfL calls per refresh (50 subrequests minus D1 calls). */
+  maxCallsPerRefresh: 40,
+  /** Workers allow 6 open connections per invocation. */
+  concurrency: 6,
+  /** Per-call timeout, started when the call is sent. */
+  timeoutMs: 5_000,
+  /** A line whose arrivals call failed reuses its previous verdict if younger than this. */
+  reuseVerdictMs: 120_000,
+  /** If D1 is down, memoise a direct TfL result per isolate for this long. */
+  memoMs: 15_000,
+} as const;

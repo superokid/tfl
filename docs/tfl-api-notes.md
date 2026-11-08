@@ -25,7 +25,8 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
   showed northbound trains terminating there and southbound trains starting there. Rules handle both
   (SPEC §5.2).
 - Missing destination in normal service is rare (3/21 at Earl's Court).
-- Horizon varies: Victoria at Oxford Circus ~17 min; Elizabeth at Bond St ~118 min.
+- Horizon varies: Victoria at Oxford Circus ~17 min; Elizabeth at Bond St ~118 min; **DLR only 2–13 min**
+  (Limehouse ~5), so DLR is often too short to judge (`short-horizon`).
 - Cable Car: `/Line/london-cable-car/Arrivals` → 404. Status-only.
 
 **Route sequence** `/Line/{id}/Route/Sequence/{direction}`

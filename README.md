@@ -34,7 +34,7 @@ Phone ──► static page (free, cached; service worker opens it offline)
      └──► Worker, one endpoint per screen, fetched when the screen is opened (ADR-011):
             /api/lines          home: statuses ──► D1 snapshot (≤ 30 s) ──► TfL (1–2 calls), one refresher
             /api/line/:id       one line's check + next trains ──► edge cache 30 s ──► TfL (3 calls)
-            /api/checks         every line's check, only when the user taps "Check every line" (~42 calls)
+            /api/checks         every line's check, on request only; no button in the app (~42 calls)
             /api/station/:id    any station or bus stop ──► edge 30 s ──► TfL (1–4 calls)
             /api/bus/:route     status + next buses at every stop ──► edge 30 s ──► TfL (2 calls)
             /api/search?q=      bus stop search ──► edge cache 1 day
@@ -84,7 +84,7 @@ Claude Code; every change was reviewed in conversation and checked against live 
   - the service worker's offline open in a real phone browser.
 - **First visitor after 90 s idle** waits ~2 s for live statuses (later visitors ~50 ms); a line ~1.3 s.
 - **The home page shows mismatches only if a line was checked in the last 10 min** (someone opened it or
-  tapped "Check every line"); it no longer checks all lines in the background (ADR-011).
+  ran a check on a line page); it no longer checks all lines in the background (ADR-011).
 - **No rate limiting against deliberate abuse** of `/api`: that needs a custom domain. A separate free
   Cloudflare account isolates the user's other sites.
 - Night view says "Closed" but not "checks resume at HH:MM"; no history or trends.

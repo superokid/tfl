@@ -165,7 +165,6 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .note-alert { color: var(--closed); font-weight: 600; }
 .note-ok { color: var(--good); }
 
-.check-all { display: grid; gap: 0.4rem; justify-items: start; margin-top: 1rem; }
 
 /* Bus tab */
 .bus-tab { display: grid; gap: 0.75rem; }

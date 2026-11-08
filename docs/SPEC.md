@@ -44,7 +44,7 @@ outcome, a false alarm the next worst.
 |---|---|---|---|
 | Home | `/api/lines`: statuses (+ recent check verdicts) | 1–2 | D1 snapshot `lines` |
 | Line | `/api/line/:id`: live check + next trains | 1 + check stops | edge 30 s |
-| Check every line | `/api/checks`: all verdicts, on button press | ~42 | D1 snapshot `checks` |
+| Check every line | `/api/checks`: all verdicts, on request; no UI button | ~42 | D1 snapshot `checks` |
 | Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route | `/api/bus/:route`: status + every stop with next buses | 2 (+2 stop order, cached a day) | edge 30 s |
 | Bus stop search | `/api/search?q=` (≥ 3 chars) | 1 | edge 1 day |
@@ -148,7 +148,7 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 - **Home:** mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus; they wrap, never hidden). Lines as
   TfL lists them: problems first, then A–Z; status in plain words with an icon. Live-check note only when
   it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
-  mismatches. "Check every line against live trains" runs the full check on request.
+  mismatches.
 - **Line:** TfL's status and message; "Live trains" card in plain words (why it couldn't check, if so); next
   trains at both check stations; "How we checked" evidence.
 - **Station / bus stop:** each line's status with live departures by platform; bus stops list routes with

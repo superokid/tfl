@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
-import { isLinesBody, isStatusBody, type CheckSummary, type LineStatus } from '../shared/api';
+import { useState } from 'react';
+import { isLinesBody, type LineStatus } from '../shared/api';
 import type { VerdictKind } from '../shared/rules/types';
 import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { BusTab } from './Buses';
 import { LoadError, StaleBanner, StatusText, Updated } from './ui';
-import { formatAge, rowNote, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
+import { rowNote, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
 
 const TAB_KEY = 'tfl:tab';
 
@@ -34,19 +34,8 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
     }
   };
 
-  // "Check all lines" runs only when asked (ADR-011); a recent result from anyone shows up for free.
-  const [checkRequested, setCheckRequested] = useState(false);
-  const check = useLive(checkRequested ? '/api/checks' : null, isStatusBody, { poll: false });
-  const checks: CheckSummary | null = useMemo(() => {
-    const fromCheck = check.data
-      ? {
-          checkedAt: check.data.checkedAt,
-          lines: Object.fromEntries(check.data.lines.map((l) => [l.lineId, { verdict: l.verdict, reason: l.reason, summary: l.summary }])),
-        }
-      : null;
-    const fromLines = live.data?.checks ?? null;
-    return fromCheck && (!fromLines || fromCheck.checkedAt >= fromLines.checkedAt) ? fromCheck : fromLines;
-  }, [check.data, live.data]);
+  // Verdicts come from per-line checks anyone ran in the last 10 min (ADR-011).
+  const checks = live.data?.checks ?? null;
 
   const age = live.data && now !== null ? now - live.data.checkedAt : null;
   const stale = !!live.data && (live.data.stale || live.source === 'device' || (age ?? 0) > 120_000);
@@ -105,13 +94,6 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
               </li>
             ))}
           </ul>
-          <CheckAll
-            checks={checks}
-            now={now}
-            running={check.loading && checkRequested}
-            failed={!!check.error && checkRequested}
-            onRun={() => (checkRequested ? check.reload() : setCheckRequested(true))}
-          />
         </section>
       )}
     </main>
@@ -131,35 +113,6 @@ function LineRow({ line, verdict }: { line: LineStatus; verdict: VerdictKind | u
         ›
       </span>
     </a>
-  );
-}
-
-function CheckAll({
-  checks,
-  now,
-  running,
-  failed,
-  onRun,
-}: {
-  checks: CheckSummary | null;
-  now: number | null;
-  running: boolean;
-  failed: boolean;
-  onRun: () => void;
-}) {
-  return (
-    <div className="check-all">
-      <button type="button" className="button" onClick={onRun} disabled={running}>
-        {running ? 'Checking live trains…' : checks ? 'Check again' : 'Check every line against live trains'}
-      </button>
-      <p className="small muted">
-        {failed
-          ? "Couldn't run the check right now. Try again in a minute."
-          : checks && now !== null
-            ? `Checked ${formatAge(now - checks.checkedAt)}. Each line's status is compared with live arrivals at two stations.`
-            : 'Compares each line’s status with live arrivals at two stations. Open a line to check just that one.'}
-      </p>
-    </div>
   );
 }
 

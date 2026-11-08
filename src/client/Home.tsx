@@ -61,26 +61,18 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
   return (
     <main className="home">
       {saved.length > 0 && (
-        <nav className="saved" aria-label="Saved">
-          {saved.map((s) => (
-            <a key={`${s.route.page}:${s.route.id}`} className="chip" href={href(s.route)}>
-              <span aria-hidden="true">★</span> <span className="chip-name">{s.name}</span>
-            </a>
-          ))}
+        <nav className="block" aria-labelledby="saved-label">
+          <h2 id="saved-label" className="label">
+            Saved
+          </h2>
+          <div className="saved">
+            {saved.map((s) => (
+              <a key={`${s.route.page}:${s.route.id}`} className="chip" href={href(s.route)}>
+                <span aria-hidden="true">★</span> <span className="chip-name">{s.name}</span>
+              </a>
+            ))}
+          </div>
         </nav>
-      )}
-
-      {rail && <Updated age={age} stale={stale} loading={live.loading} paused={idle} onRefresh={live.reload} />}
-      {rail && <StaleBanner show={stale} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />}
-
-      {rail && alerts.length > 0 && (
-        <section className="alerts" aria-label="Live train alerts">
-          {alerts.map((l) => (
-            <a key={l.lineId} className="alert" href={href({ page: 'line', id: l.lineId })} style={{ borderLeftColor: lineColour(l.lineId) }}>
-              <strong>{l.lineName}</strong> {checks?.lines[l.lineId]?.summary}
-            </a>
-          ))}
-        </section>
       )}
 
       <div className="tabs" role="tablist" aria-label="Transport mode">
@@ -93,29 +85,39 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
 
       {tab === 'bus' ? (
         <BusTab saved={saved} idle={idle} />
-      ) : !live.data ? (
-        live.loading ? (
-          <LinesSkeleton />
-        ) : (
-          <LoadError error={live.error} onRetry={live.reload} what="line status" />
-        )
       ) : (
-        <section aria-label={`${tabLabel} lines`}>
-          <div className="near-top">
-            <p className="tab-summary">{tabSummary(shown, tabLabel)}
-              {near.length > 0 && ' near you'}</p>
-            <button type="button" className="button button-sm" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
-              {where.state === 'off' ? 'Lines near me' : 'All lines'}
-            </button>
-          </div>
-          <NearNote where={where} index={index} near={near} tabLabel={tabLabel} />
-          <ul className="lines">
-            {shown.map((l) => (
-              <li key={l.lineId}>
-                <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} />
-              </li>
-            ))}
-          </ul>
+        <section className="block" aria-label={`${tabLabel} lines`}>
+          <Updated age={age} stale={stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
+          <StaleBanner show={stale} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+          {alerts.length > 0 && (
+            <div className="alerts" role="group" aria-label="Live train alerts">
+              {alerts.map((l) => (
+                <a key={l.lineId} className="alert" href={href({ page: 'line', id: l.lineId })} style={{ borderLeftColor: lineColour(l.lineId) }}>
+                  <strong>{l.lineName}</strong> {checks?.lines[l.lineId]?.summary}
+                </a>
+              ))}
+            </div>
+          )}
+          {!live.data && (live.loading ? <LinesSkeleton /> : <LoadError error={live.error} onRetry={live.reload} what="line status" />)}
+          {live.data && (
+            <>
+              <div className="near-top">
+                <p className="tab-summary">{tabSummary(shown, tabLabel)}
+                  {near.length > 0 && ' near you'}</p>
+                <button type="button" className="button button-sm" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
+                  {where.state === 'off' ? 'Lines near me' : 'All lines'}
+                </button>
+              </div>
+              <NearNote where={where} index={index} near={near} tabLabel={tabLabel} />
+              <ul className="lines">
+                {shown.map((l) => (
+                  <li key={l.lineId}>
+                    <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       )}
     </main>
@@ -135,15 +137,16 @@ function NearNote({ where, index, near, tabLabel }: { where: Where; index: unkno
       </p>
     );
   return (
-    <p className="small near-stations">
-      Nearest:{' '}
-      {near.map((s, i) => (
-        <span key={s.id}>
-          {i > 0 && ' · '}
-          <a href={href({ page: 'station', id: s.id })}>{s.name}</a> <span className="muted">{formatDistance(s.distanceM)}</span>
-        </span>
-      ))}
-    </p>
+    <div className="small near-stations">
+      <span className="muted">Nearest stations</span>
+      <ul>
+        {near.map((s) => (
+          <li key={s.id}>
+            <a href={href({ page: 'station', id: s.id })}>{s.name}</a> <span className="muted">{formatDistance(s.distanceM)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -147,11 +147,11 @@ export function PageHead({
 }) {
   useTitle(pending ? null : title);
   return (
-    <div className={`page-head${colour ? ' coloured' : ''}`} style={colour ? { borderLeftColor: colour } : undefined}>
+    <div className="page-head">
       <a href="#" className="back">
         ← Home
       </a>
-      <div className="page-title">
+      <div className={colour ? 'page-title coloured' : 'page-title'} style={colour ? { borderLeftColor: colour } : undefined}>
         <div className="page-name">
           <h2>
             {pending ? (

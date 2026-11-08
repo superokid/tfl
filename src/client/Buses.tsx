@@ -116,6 +116,7 @@ export function BusTab({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
 
   return (
     <section className="bus-tab" aria-label="Buses">
+      {savedBus.length > 0 && <h2 className="label">Saved</h2>}
       {savedBus.length > 0 && (
         <ul className="lines" aria-label="Saved stops and routes">
           {savedBus.map((s) => (

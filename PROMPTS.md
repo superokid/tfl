@@ -176,3 +176,13 @@ Sample of prompts used (Claude Code), with corrections.
   each page's real layout classes (line rows, status and check cards, station boards, bus rows, route timeline,
   nearby stops), a page-wide shimmer, a 120 ms fade-in so fast loads don't flash, and a bone for the page title.
   One `role="status"` label per skeleton for screen readers. Checked by screenshot with `/api/*` held open.
+
+
+## 2026-11-08: mobile spacing, one theme
+- "the UI looks so crowded on mobile. I think need separation between bookmark, filter, content, detail".
+- Brand and search now sit in their own band; home is labelled blocks (Saved, mode tabs with a divider,
+  the mode's content) with more space between blocks than inside them; detail pages put a rule under the
+  title. Nearest stations became a wrapping list (the inline one overflowed at 320 px).
+- Mid-task: "dont use light theme and dark theme. any theme on browser use the same color" → dark mode
+  removed, one light theme (SPEC §6 updated).
+- Bundle still over 80 KB (82,210 B, 290 B over), inherited from the lines-near-me branch; left for the user.

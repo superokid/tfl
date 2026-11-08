@@ -17,33 +17,37 @@ export function App() {
   const saved = useSaved();
 
   return (
-    <div className="page">
-      <header className="top">
-        <a href="#" className="brand">
-          <h1>London Live</h1>
-          <p className="small muted">TfL status, checked against live trains</p>
-        </a>
+    <>
+      {/* Brand and search in their own band, apart from the page content. */}
+      <header className="masthead">
+        <div className="masthead-in">
+          <a href="#" className="brand">
+            <h1>London Live</h1>
+            <p className="small muted">TfL status, checked against live trains</p>
+          </a>
+          <Boundary>
+            <Search />
+          </Boundary>
+        </div>
       </header>
 
-      <Boundary>
-        <Search />
-      </Boundary>
+      <div className="page">
+        {/* Keyed by page: leaving a screen that failed to render clears the error. */}
+        <Boundary key={`${route.page}:${'id' in route ? route.id : ''}`}>
+          {route.page === 'home' && <Home saved={saved.items} idle={idle} />}
+          {route.page === 'line' && <LinePage key={route.id} id={route.id} saved={saved} idle={idle} />}
+          {route.page === 'station' && <StationPage key={route.id} id={route.id} saved={saved} idle={idle} />}
+          {route.page === 'bus' && <BusRoutePage key={route.id} id={route.id} saved={saved} idle={idle} />}
+        </Boundary>
 
-      {/* Keyed by page: leaving a screen that failed to render clears the error. */}
-      <Boundary key={`${route.page}:${'id' in route ? route.id : ''}`}>
-        {route.page === 'home' && <Home saved={saved.items} idle={idle} />}
-        {route.page === 'line' && <LinePage key={route.id} id={route.id} saved={saved} idle={idle} />}
-        {route.page === 'station' && <StationPage key={route.id} id={route.id} saved={saved} idle={idle} />}
-        {route.page === 'bus' && <BusRoutePage key={route.id} id={route.id} saved={saved} idle={idle} />}
-      </Boundary>
-
-      <footer className="small muted">
-        <p>
-          Line statuses come from TfL. For rail, we also compare them with live arrival predictions at two
-          stations per line, and flag a line only when both stations agree.
-        </p>
-        <p>Powered by TfL Open Data. Not affiliated with TfL.</p>
-      </footer>
-    </div>
+        <footer className="small muted">
+          <p>
+            Line statuses come from TfL. For rail, we also compare them with live arrival predictions at two
+            stations per line, and flag a line only when both stations agree.
+          </p>
+          <p>Powered by TfL Open Data. Not affiliated with TfL.</p>
+        </footer>
+      </div>
+    </>
   );
 }

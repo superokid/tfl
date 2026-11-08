@@ -18,7 +18,7 @@ These rules apply to every AI-assisted change in this repository.
 - Never squash or amend published commits.
 - Never add polling for live status or arrivals (ADR-001). Only reference data is refreshed in the background.
 - Never hardcode what the TfL API can provide (ADR-005). Put exceptions in `overrides.ts`, with a reason.
-- Never add a UI component library or a heavy dependency without asking. The bundle budget is < 80 KB
+- Never add a UI component library or a heavy dependency without asking. The bundle budget is < 90 KB
   gzipped in total, with app code (everything except React) < 20 KB.
 - Never let a fallback normal gap, empty predictions or a frozen feed produce a mismatch verdict. Those
   are `CANT_VERIFY`.

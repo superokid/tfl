@@ -1,12 +1,12 @@
 /**
- * Bundle budget (SPEC §3): JS+CSS < 80 KB gzipped in total; app code (excluding the React
+ * Bundle budget (SPEC §3): JS+CSS < 90 KB gzipped in total; app code (excluding the React
  * vendor chunk) < 20 KB. Run after `bun run build`. Exits 1 if over budget.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-const TOTAL_BUDGET = 80 * 1024;
+const TOTAL_BUDGET = 90 * 1024;
 const APP_BUDGET = 20 * 1024;
 const dir = 'dist/client/assets';
 

@@ -25,7 +25,7 @@ outcome, a false alarm the next worst.
 ## 3. Platform
 
 - TypeScript, React + Vite, one Worker (static assets + API), one D1 (`weur`). No UI library.
-- Bundle < 80 KB gzipped; app code (excluding React) < 20 KB. Reported in CI.
+- Bundle < 90 KB gzipped (raised from 80 KB on 2026-11-08: React alone is ~66 KB); app code (excluding React) < 20 KB. Reported in CI.
 
 | Free-tier limit | Consequence |
 |---|---|

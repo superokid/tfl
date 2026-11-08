@@ -7,9 +7,12 @@ import { Times } from './Times';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
 import { checkCard, evidenceText, isOverThreshold, severityFromSays } from './view';
 
-/** One line: TfL's status and message, our live check in plain words, and next trains. Fetched on open. */
+/**
+ * One line: TfL's status and message, our live check in plain words, and next trains. Fetched on open;
+ * the phone's last copy shows at once (marked with its age) while the slow live check loads.
+ */
 export function LinePage({ id, saved, idle }: { id: string; saved: ReturnType<typeof useSaved>; idle: boolean }) {
-  const live = useLive(`/api/line/${id}`, isLineBody, { paused: idle });
+  const live = useLive(`/api/line/${id}`, isLineBody, { paused: idle, saveAs: `tfl:line:${id}` });
   const now = useServerNow(live.data, live.receivedAt);
   const line = live.data;
   const age = line && now !== null ? now - line.checkedAt : null;
@@ -20,7 +23,7 @@ export function LinePage({ id, saved, idle }: { id: string; saved: ReturnType<ty
       <PageHead colour={lineColour(id)} title={line?.lineName ?? 'Line'}>
         {line && <SaveButton item={{ route, name: line.lineName }} saved={saved.isSaved(route)} onToggle={saved.toggle} />}
       </PageHead>
-      <Updated age={age} stale={!!line?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
+      <Updated age={age} stale={!!line?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!line?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!line && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this line" />}
       {!line && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}

@@ -113,6 +113,9 @@ Sample of prompts used (Claude Code), with corrections.
 - "make sure not spamming my cloudflare api limit & have good budget": status and times in one response
   (1 Worker request per minute while the page is open), stop order cached a day (2 TfL calls per refresh),
   30 s edge cache shared by everyone, no D1 writes. Tests assert 4 calls cold, 0 within 30 s, 2 after.
+- "api/line/xx is very slow. just cache on browser far longer while it loading a new data": line pages now
+  keep their last result on the phone and show it at once, marked "Last updated …", while the live check
+  loads. The "can't reach the service" banner now waits for a real error.
 
 ## 2026-11-08: bus stops near you
 - "Instead of check bus number, is it better just put the station location, and show how many minutes for the
@@ -123,3 +126,4 @@ Sample of prompts used (Claude Code), with corrections.
   cell; one Worker request per minute; no D1 writes.
 - Screenshots found the "›" wrapping onto its own line and two "updated" rows on the Bus tab (it was also
   polling rail status it didn't show). Both fixed; the search box moved above the nearby list.
+

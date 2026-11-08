@@ -41,7 +41,8 @@ export function Updated({
 }
 
 export function StaleBanner({ show, deviceCopy, age, error }: { show: boolean; deviceCopy: boolean; age: number; error: string | null }) {
-  if (!show) return null;
+  // A device copy with no error yet is just on screen while the live data loads: the age line says so.
+  if (!show || (deviceCopy && !error)) return null;
   return (
     <div className="banner banner-warn" role="status">
       {deviceCopy

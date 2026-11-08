@@ -24,13 +24,14 @@
   "secrets": {
     "required": ["TFL_APP_KEY"]
   },
-  // Snapshot and refresh lease (ADR-002/006). Before the first deploy, create it near London:
-  //   wrangler d1 create tfl-status-vs-reality --location weur   → add the printed database_id here.
-  // Without an id Wrangler would auto-create it near the deployer. Local dev: bun run db:migrate.
+  // Snapshot and refresh lease (ADR-002/006). Created near London (--location weur). The id is pinned:
+  // without it, a deploy from a checkout with no .wrangler state auto-creates a new database near the
+  // deployer. Local dev: bun run db:migrate.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "tfl-status-vs-reality",
+      "database_id": "20609550-549d-4239-a878-2e608b78dd33",
       "migrations_dir": "migrations"
     }
   ]

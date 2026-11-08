@@ -1,5 +1,5 @@
 /**
- * Load test: hammers /api/status (and a few stations) and reports latency, errors and, most importantly,
+ * Load test: hammers /api/lines (and a few stations) and reports latency, errors and, most importantly,
  * how many distinct TfL refreshes happened: the free-tier footprint under concurrency (ADR-009).
  *   bun scripts/load.ts http://localhost:5180 [seconds=60] [concurrency=20]
  */
@@ -24,7 +24,7 @@ async function worker(n: number) {
   while (Date.now() < end) {
     // 9 in 10 requests are the main page's poll; 1 in 10 opens a station.
     const station = i++ % 10 === n % 10 ? STATIONS[i % STATIONS.length] : null;
-    const path = station ? `/api/station/${station}` : '/api/status';
+    const path = station ? `/api/station/${station}` : '/api/lines';
     const t0 = performance.now();
     try {
       const res = await fetch(new URL(path, base), { signal: AbortSignal.timeout(15_000) });

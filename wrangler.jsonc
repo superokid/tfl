@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tfl-status-vs-reality",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    // The React app is served as static assets; only /api/* reaches the Worker.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Secret names only, never values. Local: .dev.vars (gitignored).
+  // Production: `wrangler secret put TFL_APP_KEY`. Declaring it here keeps generated types
+  // identical on every machine and in CI, whether or not .dev.vars exists.
+  "secrets": {
+    "required": ["TFL_APP_KEY"]
+  }
+  // D1 binding is added in Phase 3/4 (SPEC §4).
+}

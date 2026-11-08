@@ -91,3 +91,9 @@ Sample of prompts used (Claude Code), with corrections.
 - "continue next phase": headers, Lighthouse, load test, spot-checks, all on the production build.
 - The load test found a station-cache stampede (38 TfL fetches instead of ~9, 5 errors). Fixed by sharing one
   in-flight fetch per station; re-run: 0 errors, 9 fetches.
+
+## 2026-11-08: Phase 8, docs
+- Final README written against the brief: live URL, AI rules file, prompts, how it was verified, time spent
+  (from git history), what isn't finished.
+- Caught while writing the deploy steps: an auto-provisioned D1 would be created near the deployer (UTC+8),
+  far from London users, so the README now creates it in `weur` first.

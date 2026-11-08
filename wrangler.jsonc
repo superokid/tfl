@@ -24,8 +24,9 @@
   "secrets": {
     "required": ["TFL_APP_KEY"]
   },
-  // Snapshot, refresh lease and TfL call budget (ADR-002/006). No database_id: Wrangler provisions the
-  // database on first deploy. Local dev uses a local SQLite file (bun run db:migrate).
+  // Snapshot and refresh lease (ADR-002/006). Before the first deploy, create it near London:
+  //   wrangler d1 create tfl-status-vs-reality --location weur   → add the printed database_id here.
+  // Without an id Wrangler would auto-create it near the deployer. Local dev: bun run db:migrate.
   "d1_databases": [
     {
       "binding": "DB",

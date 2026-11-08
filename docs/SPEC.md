@@ -222,7 +222,7 @@ polls every 60 s and stops after 10 min idle.
 | 3 | Reference data | Lines, stations, gaps, hours in D1; cron; fallbacks logged |
 | 4 | Live data layer | §4.1 complete; outage and repeat tests in `docs/verification.md` |
 | 5 | Rail UI | All states, service worker, 320 px, dark mode, offline, bundle size |
-| 6 | Bus search | Endpoint and UI |
+| 6 | Station search | Any rail station's live departures (ADR-008); buses not covered |
 | 7 | Hardening | Security headers, Lighthouse, load test, 3 spot-checks vs tfl.gov.uk |
 | 8 | Docs | README, PROMPTS, time, unfinished |
 

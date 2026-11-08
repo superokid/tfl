@@ -88,6 +88,7 @@ export type VerdictReason =
   | 'partial-unlocated'
   | 'insufficient-data'
   | 'fallback-gap'
+  | 'mixed-evidence'
   // CLOSED
   | 'planned-closure'
   | 'outside-hours';

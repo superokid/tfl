@@ -56,3 +56,11 @@ Sample of prompts used (Claude Code), with corrections.
 - First local run against live TfL: cold refresh 6.2 s, then 25 ms from D1. Read every verdict by hand:
   DLR predictions only reach 2–13 min ahead (known limit), and Liberty's "can't verify" sentence overstated
   the evidence, so it was reworded.
+
+## 2026-11-08: Phase 5, rail UI
+- First screenshot: every line was hidden behind three closed groups → changed to one compact, tappable row
+  per line, with mismatches as full cards on top.
+- Reading the live page found Lioness "Part Closure" marked "Matches" while trains ran inside the closure.
+  MATCH now needs every station to agree; a split shows as "Mixed signals".
+- A live Tram hidden disruption appeared during testing (marginal: 9.01 min vs a 9 min threshold);
+  logged in docs/verification.md as tuning input, not tuned after one observation.

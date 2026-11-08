@@ -5,5 +5,5 @@
     "lib": ["ES2023"],
     "types": ["./worker-configuration.d.ts", "node"]
   },
-  "include": ["test", "src/worker", "src/shared", "worker-configuration.d.ts"]
+  "include": ["test", "src/worker", "src/shared", "src/client/view.ts", "src/client/lineColours.ts", "worker-configuration.d.ts"]
 }

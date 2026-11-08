@@ -219,5 +219,23 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
     );
   }
 
+  // 5. No flag. MATCH only if every usable station agrees with what TfL says there; one station that
+  // contradicts the status (too little to flag) makes the line unverifiable, never "OK".
+  const disagrees = (v: StationView) =>
+    v.expected === 'NORMAL' || v.expected === 'MINOR'
+      ? isOver(v, false)
+      : v.expected === 'NONE'
+        ? allUnder(v, (e) => e.thresholdMin, false)
+        : allUnder(v, (e) => RULES.degradedNormalMultiplier * e.normalGapMin, false);
+  const odd = usable.find(disagrees);
+  if (odd) {
+    return verdict(
+      'CANT_VERIFY',
+      'mixed-evidence',
+      `Services at ${odd.station.name} don't fit TfL's status, but one station isn't enough to flag it.`,
+      evidence,
+    );
+  }
+
   return verdict('MATCH', null, `${plural(noun)[0]!.toUpperCase()}${plural(noun).slice(1)} at ${names(usable)} are consistent with TfL's status.`, evidence);
 }

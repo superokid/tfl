@@ -39,8 +39,17 @@ describe('MATCH', () => {
     expect(judgeLine(twoStations(LONG, LONG, [status('Severe Delays')]), now).verdict).toBe('MATCH');
   });
 
-  it('a long gap at only one station is not enough to flag', () => {
-    expect(judgeLine(twoStations(LONG, NORMAL), now).verdict).toBe('MATCH');
+  it('a long gap at only one station is not enough to flag, and is not a match either', () => {
+    expect(judgeLine(twoStations(LONG, NORMAL), now)).toMatchObject({
+      verdict: 'CANT_VERIFY',
+      reason: 'mixed-evidence',
+      summary: "Services at Euston don't fit TfL's status, but one station isn't enough to flag it.",
+    });
+  });
+
+  it('Part Closure: one station inside the closure with trains running is not a match (live Lioness case)', () => {
+    const closure = status('Part Closure', { affectedStopIds: ['euston'] });
+    expect(judgeLine(twoStations(NORMAL, NORMAL, [closure]), now).reason).toBe('mixed-evidence');
   });
 });
 

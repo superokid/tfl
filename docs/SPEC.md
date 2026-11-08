@@ -138,7 +138,7 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 |---|---|
 | `HIDDEN_DISRUPTION` | Expected `NORMAL`/`MINOR`, and ≥ 2 stations have a usable direction over the threshold. |
 | `STALE_ALERT` | Expected `NONE`, but ≥ 2 such stations have services within the threshold; or expected `DEGRADED`, but at ≥ 2 stations every gap is ≤ 1.5 × normal. |
-| `MATCH` | ≥ 2 usable stations, and the evidence agrees with the status. |
+| `MATCH` | ≥ 2 usable stations, and **every** usable station agrees with the status. One that contradicts it (too little to flag) → `CANT_VERIFY` (`mixed-evidence`). |
 | `CANT_VERIFY` | Failed, invalid, empty or frozen data; < 2 usable stations; unknown status; `PARTIAL` with no affected stops or no check station in them; status-only line; budget hit; mismatch based on a fallback gap. |
 | `CLOSED` | Expected `CLOSED`, or outside timetable hours. Never a mismatch. |
 

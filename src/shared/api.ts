@@ -1,4 +1,5 @@
 /** Response contracts shared by the Worker and the client. */
+import type { StationBoard } from './boards';
 import type { LineVerdict, VerdictKind } from './rules/types';
 
 export interface HealthBody {
@@ -13,13 +14,24 @@ export interface ErrorBody {
   error: string;
 }
 
+/** A line as served: the verdict, TfL's own messages, and live arrivals at the check stations. */
+export interface LineReport extends LineVerdict {
+  /** TfL's passenger messages for the current statuses (de-duplicated). */
+  messages: string[];
+  boards: StationBoard[];
+}
+
+/** Bump when the Snapshot shape changes: a stored snapshot of another version is ignored and refreshed. */
+export const SNAPSHOT_VERSION = 2;
+
 /** What is stored in D1 and served by /api/status. */
 export interface Snapshot {
+  version: number;
   /** When TfL was last read successfully (epoch ms). */
   checkedAt: number;
   /** When the rail reference data was generated (ISO). */
   referenceGeneratedAt: string;
-  lines: LineVerdict[];
+  lines: LineReport[];
 }
 
 export interface StatusBody extends Snapshot {
@@ -60,7 +72,9 @@ export function isStatusBody(value: unknown): value is StatusBody {
         typeof x.summary === 'string' &&
         typeof x.tflSays === 'string' &&
         VERDICTS.includes(x.verdict as VerdictKind) &&
-        Array.isArray(x.evidence)
+        Array.isArray(x.evidence) &&
+        Array.isArray(x.messages) &&
+        Array.isArray(x.boards)
       );
     })
   );

@@ -149,23 +149,29 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 
 ## 6. UI
 
-- **Header:** title, "updated 12s ago" (from `checkedAt`/`serverNow`), refresh button.
-- **Mismatches first** (line-colour stripe, "TfL says / Services show", tap for evidence), then matches
-  (collapsed), then `CANT_VERIFY`/`CLOSED` with reasons.
-- **Bus:** route search with suggestions; recent routes in `localStorage`.
+A status page passengers can use instead of TfL's: official status, TfL's own messages, live next trains,
+and whether the status matches what's running.
+
+- **Header:** title, "updated 12s ago" (server clock), refresh button.
+- **Headline:** e.g. "1 line doesn't match what's running" or "6 of 21 match · 13 can't be checked · 1 closed".
+- **Mismatches first** as full cards (line colour, our sentence, next trains, "How this was checked").
+- **All lines** below, alphabetical: one compact row each (name, TfL status, verdict badge). Tapping
+  expands TfL's message, next trains at both check stations, and the evidence. `/#<lineId>` opens a line.
+- **Next trains:** up to 6 per direction with destination, counting down on the server clock ("Due",
+  "3 min"); boards say so when TfL's call failed or nothing is predicted.
+- A mismatch sentence says when the gap starts, so it can be checked against the board.
 
 | State | Shows |
 |---|---|
-| Summary | "All 20 checkable lines match", or "18 of 21 match · 3 can't be checked" |
 | Stale | "TfL isn't responding, showing information from 4 min ago" |
 | No data | Message + retry |
-| Night | "Most lines are closed, checks resume at HH:MM" (from the timetable) |
 | Loading | Skeleton |
-| Offline | Last `localStorage` result with its age |
+| Offline / API down | Last `localStorage` result with its age |
 
-- Auto-refresh every 30 s while visible.
+- Auto-refresh every 30 s while visible (quiet); manual refresh shows a spinner.
 - AA contrast, colour never the only signal, 320 px, dark mode.
 - No TfL logo or endorsement. Credit "Powered by TfL Open Data".
+- Snapshot shape is versioned (`SNAPSHOT_VERSION`): a row from an older deploy is ignored and refreshed.
 
 ## 7. Tests and CI
 

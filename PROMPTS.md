@@ -64,3 +64,14 @@ Sample of prompts used (Claude Code), with corrections.
   MATCH now needs every station to agree; a split shows as "Mixed signals".
 - A live Tram hidden disruption appeared during testing (marginal: 9.01 min vs a 9 min threshold);
   logged in docs/verification.md as tuning input, not tuned after one observation.
+
+## 2026-11-08: live arrivals and TfL messages
+- "The UI should not only show what good and not match only. it should show real data, when it arrive. it will
+  be replace the current tfl website"
+  - The arrivals and TfL's messages were already fetched every refresh and then thrown away, so they're now
+    kept: next 6 trains per direction counting down, TfL's message per line, an alphabetical list of all lines,
+    and `/#<line>` deep links.
+  - The first live screenshot contradicted itself: "8-minute gap" next to a board showing trains every 2 min.
+    The gap was real but later than the 4 trains shown. The sentence now says when the gap starts, and boards
+    show 6 trains.
+  - Stored snapshots are versioned so an older shape left in D1 after a deploy is refreshed, not served.

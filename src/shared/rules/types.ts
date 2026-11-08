@@ -15,6 +15,8 @@ export interface StatusInput {
   validityPeriods: { from: number; to: number }[];
   /** NaPTAN ids of stops the disruption covers (`?detail=true`), when TfL lists them. */
   affectedStopIds: string[];
+  /** TfL's message for passengers, e.g. "Minor delays due to train cancellations." Display only. */
+  reason: string | null;
 }
 
 export interface Prediction {
@@ -31,6 +33,8 @@ export interface Prediction {
   confirmed: boolean;
   /** Terminates at this stop: at a suspension boundary these arrive but don't continue. */
   terminatesHere: boolean;
+  /** Where it's going, for the arrivals board ("Brixton"). Display only. */
+  destination: string | null;
 }
 
 export type ArrivalsFailure = 'failed' | 'invalid' | 'budget';
@@ -115,6 +119,8 @@ export interface DirectionEvidence {
   observedGapMin: number | null;
   /** 'next' = now → first arrival; 'between' = two consecutive arrivals. */
   gapKind: 'next' | 'between' | null;
+  /** When that gap starts, in minutes from the check (0 for 'next'). */
+  gapStartMin: number | null;
   horizonMin: number | null;
   usable: boolean;
   issue: DirectionIssue | null;

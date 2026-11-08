@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeLabel, evidenceText, formatAge, groupLines, headline } from '../../src/client/view';
+import { badgeLabel, evidenceText, formatAge, formatDue, groupLines, headline } from '../../src/client/view';
 import type { DirectionEvidence, LineVerdict, VerdictKind } from '../../src/shared/rules/types';
 
 const line = (lineName: string, verdict: VerdictKind): LineVerdict => ({
@@ -24,6 +24,7 @@ const ev = (over: Partial<DirectionEvidence>): DirectionEvidence => ({
   thresholdMin: 8,
   observedGapMin: 14,
   gapKind: 'next',
+  gapStartMin: 0,
   horizonMin: 20,
   usable: true,
   issue: null,
@@ -72,8 +73,8 @@ describe('evidenceText', () => {
     expect(evidenceText(ev({}))).toBe('southbound: next in 14 min (usually 3 min)');
   });
   it('gap between trains, estimated normal', () => {
-    expect(evidenceText(ev({ gapKind: 'between', observedGapMin: 12, normalGapIsFallback: true }))).toBe(
-      'southbound: 12 min gap (usually 3 min, estimated)',
+    expect(evidenceText(ev({ gapKind: 'between', observedGapMin: 12, gapStartMin: 7, normalGapIsFallback: true }))).toBe(
+      'southbound: 12 min gap from 7 min (usually 3 min, estimated)',
     );
   });
   it('unusable direction explains why', () => {
@@ -92,4 +93,14 @@ describe('badgeLabel', () => {
     expect(badgeLabel({ ...line('A', 'CANT_VERIFY'), reason: 'insufficient-data' })).toBe("Can't verify");
     expect(badgeLabel(line('A', 'HIDDEN_DISRUPTION'))).toBe('Worse than reported');
   });
+});
+
+describe('formatDue', () => {
+  it.each([
+    [-20_000, 'Due'],
+    [25_000, 'Due'],
+    [45_000, '1 min'],
+    [150_000, '3 min'],
+    [12 * 60_000, '12 min'],
+  ])('%i ms ahead → %s', (ms, text) => expect(formatDue(1_000_000 + ms, 1_000_000)).toBe(text));
 });

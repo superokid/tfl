@@ -68,6 +68,7 @@ function stationEvidence(s: CheckStation, line: LineInput, now: number, throughO
       ...base,
       observedGapMin: null,
       gapKind: null,
+      gapStartMin: null,
       horizonMin: null,
       usable: false,
       issue,
@@ -106,6 +107,8 @@ function allUnder(v: StationView, limit: (e: DirectionEvidence) => number, stric
   );
 }
 
+/** "an 8-minute", "an 11-minute", "a 12-minute". */
+const article = (n: number) => (n === 11 || n === 18 || String(n).startsWith('8') ? 'an' : 'a');
 const plural = (noun: string) => (noun.endsWith('s') ? `${noun}es` : `${noun}s`);
 const names = (views: StationView[]) =>
   views
@@ -193,10 +196,12 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
     const mins = Math.round(gap(worst));
     const usual = Math.round(worst.normalGapMin);
     const dir = worst.directionLabel ? `${worst.directionLabel} ` : '';
+    const start = Math.round(worst.gapStartMin ?? 0);
+    const when = start <= 0 ? '' : `, starting in ${start} minute${start === 1 ? '' : 's'}`;
     const what =
       worst.gapKind === 'next'
         ? `the next ${dir}${noun} at ${worst.stationName} is ${mins} minutes away`
-        : `there's a ${mins}-minute gap between ${dir}${plural(noun)} at ${worst.stationName}`;
+        : `there's ${article(mins)} ${mins}-minute gap between ${dir}${plural(noun)} at ${worst.stationName}${when}`;
     return verdict('HIDDEN_DISRUPTION', null, `TfL says ${tflSays}, but ${what} (usually ${usual}).`, evidence);
   }
 

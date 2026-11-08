@@ -28,6 +28,11 @@ describe('parseStatuses (live fixtures)', () => {
     expect(partial.affectedStopIds).toContain('940GZZLUQPS');
   });
 
+  it("keeps TfL's passenger message", () => {
+    const central = parseStatuses(fixture('status-rail')).get('central')![0]!;
+    expect(central.reason).toContain('Minor delays');
+  });
+
   it('a 200 with the wrong shape is a failure, not an empty result', () => {
     expect(() => parseStatuses({ message: 'oops' })).toThrow(TflError);
     expect(() => parseStatuses([])).toThrow(TflError);
@@ -44,6 +49,13 @@ describe('parseArrivals (live fixtures)', () => {
     const preds = parseArrivals(fixture('arr-bakerloo-queens-park'), '940GZZLUQPS', {}).get('bakerloo')!;
     expect(preds.every((p) => p.directionKey === 'inbound' || p.directionKey === 'outbound' || p.directionKey.startsWith('platform:'))).toBe(true);
     expect(preds.filter((p) => p.directionKey === 'inbound').length).toBeGreaterThan(1);
+  });
+
+  it('reads destinations for the board, never "Check Front of Train"', () => {
+    const preds = parseArrivals(fixture('arr-victoria-oxford-circus'), '940GZZLUOXC', {}).get('victoria')!;
+    expect(preds.map((p) => p.destination)).toContain('Brixton');
+    const qp = parseArrivals(fixture('arr-bakerloo-queens-park'), '940GZZLUQPS', {}).get('bakerloo')!;
+    expect(qp.every((p) => p.destination !== 'Check Front of Train')).toBe(true);
   });
 
   it('marks trains terminating here, and unconfirmed (no destination) vehicles', () => {

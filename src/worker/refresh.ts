@@ -2,12 +2,13 @@
  * One refresh: TfL → verdicts for every rail line (SPEC §4.1 step 6–8). Throws TflError only when the
  * status call fails (nothing to judge); per-stop failures degrade those lines only.
  */
-import type { Snapshot } from '../shared/api';
+import { SNAPSHOT_VERSION, type LineReport, type Snapshot } from '../shared/api';
+import { buildBoard, lineMessages } from '../shared/boards';
 import { LIVE } from '../shared/config';
 import { expandDirection } from '../shared/reference/load';
 import type { ReferenceFile } from '../shared/reference/types';
-import { mapStatus } from '../shared/rules/status';
-import type { ArrivalsFailure, LineInput, LineVerdict, Prediction, StationArrivals } from '../shared/rules/types';
+import { activeStatuses, mapStatus } from '../shared/rules/status';
+import type { ArrivalsFailure, LineInput, Prediction, StationArrivals } from '../shared/rules/types';
 import { judgeLine } from '../shared/rules/verdict';
 import { TflError, type TflClient } from './tfl/client';
 import { parseArrivals, parseStatuses } from './tfl/parse';
@@ -54,7 +55,7 @@ export async function buildSnapshot(
   );
 
   const previousById = new Map(previous?.lines.map((l) => [l.lineId, l]));
-  const lines: LineVerdict[] = reference.lines.map((ref) => {
+  const lines: LineReport[] = reference.lines.map((ref) => {
     const input: LineInput = {
       lineId: ref.lineId,
       lineName: ref.lineName,
@@ -72,13 +73,19 @@ export async function buildSnapshot(
           }),
     };
     const verdict = judgeLine(input, now);
+    const messages = lineMessages(ref.lineName, activeStatuses(input.statuses, now).map((s) => s.reason));
+    const boards = input.stations.map((s) =>
+      buildBoard(s.stopId, s.name, s.arrivals.ok ? s.arrivals.predictions : null, now, 6),
+    );
 
     // A failed arrivals call shouldn't blank a line that was judged moments ago.
     const callFailed = input.stations.some((s) => !s.arrivals.ok);
     const prev = previousById.get(ref.lineId);
-    if (callFailed && verdict.verdict === 'CANT_VERIFY' && prev && now - prev.checkedAt < LIVE.reuseVerdictMs) return prev;
-    return verdict;
+    if (callFailed && verdict.verdict === 'CANT_VERIFY' && prev && now - prev.checkedAt < LIVE.reuseVerdictMs) {
+      return { ...prev, messages };
+    }
+    return { ...verdict, messages, boards };
   });
 
-  return { checkedAt: now, referenceGeneratedAt: reference.generatedAt, lines };
+  return { version: SNAPSHOT_VERSION, checkedAt: now, referenceGeneratedAt: reference.generatedAt, lines };
 }

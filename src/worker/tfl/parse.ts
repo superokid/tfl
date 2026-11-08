@@ -2,7 +2,7 @@
  * Raw TfL JSON → the rules engine's domain model. Everything from the network is untrusted: a 200 with an
  * unexpected shape is a failure (TflError 'invalid'), and bad individual records are skipped.
  */
-import { boundWord } from '../../shared/reference/derive';
+import { boundWord, cleanStationName } from '../../shared/reference/derive';
 import type { Prediction, StatusInput } from '../../shared/rules/types';
 import { TflError } from './client';
 
@@ -30,7 +30,8 @@ export function parseStatuses(body: unknown): Map<string, StatusInput[]> {
         .filter((p): p is { from: number; to: number } => p !== null && p.from !== null && p.to !== null);
       const stops = isObj(s.disruption) && Array.isArray(s.disruption.affectedStops) ? s.disruption.affectedStops : [];
       const affectedStopIds = stops.map((st) => (isObj(st) ? str(st.naptanId) : null)).filter((x): x is string => !!x);
-      statuses.push({ description, validityPeriods, affectedStopIds });
+      const reason = str(s.reason)?.trim().replace(/\s+/g, ' ') ?? null;
+      statuses.push({ description, validityPeriods, affectedStopIds, reason });
     }
     out.set(line.id as string, statuses);
   }
@@ -74,6 +75,8 @@ export function parseArrivals(
       `platform:${platform}`;
     const timing = isObj(a.timing) ? a.timing : {};
     const destination = str(a.destinationNaptanId);
+    const towards = str(a.towards);
+    const destinationName = str(a.destinationName);
     out.set(lineId, [
       ...(out.get(lineId) ?? []),
       {
@@ -83,8 +86,13 @@ export function parseArrivals(
         expectedArrival,
         // Unknown freshness is treated as frozen: we can't show it's live.
         timingRead: time(timing.read) ?? 0,
-        confirmed: destination !== null || str(a.destinationName) !== null,
+        confirmed: destination !== null || destinationName !== null,
         terminatesHere: destination === stopId,
+        destination: destinationName
+          ? cleanStationName(destinationName)
+          : towards && !/check front of train/i.test(towards)
+            ? towards
+            : null,
       },
     ]);
   }

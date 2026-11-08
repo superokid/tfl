@@ -78,6 +78,13 @@ describe('/api/status data layer (ADR-006)', () => {
     expect(store.snapshot?.checkedAt).toBe(NOW);
   });
 
+  it('a snapshot stored by an older deploy (other shape) is ignored and refreshed', async () => {
+    const store = await seeded(NOW - 5_000);
+    store.snapshot = { ...store.snapshot!, version: 1 };
+    const b = await body(await handleStatus(deps(store, fakeTfl()).d));
+    expect(b.checkedAt).toBe(NOW);
+  });
+
   it('fresh snapshot (< 15 s): one store read, no TfL call', async () => {
     const store = await seeded(NOW - 5_000);
     const tfl = fakeTfl();
@@ -202,5 +209,8 @@ describe('snapshot from live fixtures', () => {
     expect(byId.get('waterloo-city')).toMatchObject({ verdict: 'CLOSED', reason: 'planned-closure' });
     expect(byId.get('london-cable-car')).toMatchObject({ verdict: 'CANT_VERIFY', reason: 'status-only' });
     expect(byId.get('bakerloo')?.tflSays).toBe('Severe Delays, Part Suspended');
+    expect(byId.get('bakerloo')?.messages).toHaveLength(1);
+    expect(byId.get('bakerloo')?.messages[0]).toMatch(/^No service between Queen's Park/);
+    expect(byId.get('victoria')?.boards).toHaveLength(2);
   });
 });

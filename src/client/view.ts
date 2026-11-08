@@ -3,16 +3,16 @@ import type { DirectionEvidence, LineVerdict, VerdictKind } from '../shared/rule
 
 export const MISMATCH: VerdictKind[] = ['HIDDEN_DISRUPTION', 'STALE_ALERT'];
 
-export interface Groups {
-  mismatches: LineVerdict[];
-  matches: LineVerdict[];
-  unchecked: LineVerdict[];
-  closed: LineVerdict[];
+export interface Groups<T extends LineVerdict = LineVerdict> {
+  mismatches: T[];
+  matches: T[];
+  unchecked: T[];
+  closed: T[];
 }
 
 const byName = (a: LineVerdict, b: LineVerdict) => a.lineName.localeCompare(b.lineName);
 
-export function groupLines(lines: LineVerdict[]): Groups {
+export function groupLines<T extends LineVerdict>(lines: T[]): Groups<T> {
   return {
     mismatches: lines.filter((l) => MISMATCH.includes(l.verdict)).sort(byName),
     matches: lines.filter((l) => l.verdict === 'MATCH').sort(byName),
@@ -50,6 +50,13 @@ export function badgeLabel(line: LineVerdict): string {
   return line.reason === 'mixed-evidence' ? 'Mixed signals' : VERDICT_LABEL[line.verdict];
 }
 
+/** Arrival countdown: "Due" within 30 s, else whole minutes ("1 min", "12 min"). */
+export function formatDue(at: number, now: number): string {
+  const ms = at - now;
+  if (ms <= 30_000) return 'Due';
+  return `${Math.max(1, Math.round(ms / 60_000))} min`;
+}
+
 export function formatAge(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `${s}s ago`;
@@ -77,7 +84,9 @@ export function evidenceText(e: DirectionEvidence): string {
   const dir = e.directionLabel || (e.directionKey.startsWith('platform:') ? e.directionKey.slice(9) : e.directionKey === '*' ? 'all directions' : e.directionKey);
   if (!e.usable || e.observedGapMin === null) return `${dir}: ${e.issue ? ISSUE_TEXT[e.issue] : 'no data'}`;
   const usual = `usually ${mins(e.normalGapMin)}${e.normalGapIsFallback ? ', estimated' : ''}`;
-  const what = e.gapKind === 'next' ? `next in ${mins(e.observedGapMin)}` : `${mins(e.observedGapMin)} gap`;
+  const start = Math.round(e.gapStartMin ?? 0);
+  const what =
+    e.gapKind === 'next' ? `next in ${mins(e.observedGapMin)}` : `${mins(e.observedGapMin)} gap${start > 0 ? ` from ${start} min` : ''}`;
   return `${dir}: ${what} (${usual})`;
 }
 

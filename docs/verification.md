@@ -25,3 +25,10 @@ What was checked against live TfL data, and what it changed. Newest first.
   "Mixed signals".
 - DLR predictions reach only 2–13 min ahead → mostly "Can't verify" (`short-horizon`).
 - Elizabeth line and Overground have no TfL timetables → never flagged (fallback gap).
+
+## 2026-11-08, live arrivals boards
+- Victoria flagged live: "an 8-minute gap between northbound trains at Tottenham Hale, starting in 12 minutes
+  (usually 2)"; the board beside it shows northbound trains at 11 then 19 min, and Vauxhall southbound at
+  4 then 12, so the claim can be checked by eye. Raw TfL arrivals confirmed the gap (750 s → 1230 s).
+- Bakerloo shows TfL's full message and Waterloo's live board while North Wembley (inside the suspension)
+  says "No services predicted".

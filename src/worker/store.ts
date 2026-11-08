@@ -2,7 +2,10 @@
  * Snapshot, refresh lease and TfL call budget (ADR-002/006). The D1 implementation is the real one;
  * MemoryStore has the same semantics for tests.
  */
-import type { Snapshot } from '../shared/api';
+import { SNAPSHOT_VERSION, type Snapshot } from '../shared/api';
+
+/** A snapshot stored by an older deploy (different shape) counts as none, so it gets refreshed. */
+const current = (s: Snapshot | null) => (s && s.version === SNAPSHOT_VERSION ? s : null);
 
 export interface StoredSnapshot {
   snapshot: Snapshot | null;
@@ -31,7 +34,8 @@ export class D1Store implements Store {
     const row = await this.db
       .prepare('SELECT body, failed_at FROM snapshot WHERE id = 1')
       .first<{ body: string; failed_at: number | null }>();
-    return { snapshot: row ? (JSON.parse(row.body) as Snapshot) : null, failedAt: row?.failed_at ?? null };
+    const snapshot = current(row ? (JSON.parse(row.body) as Snapshot) : null);
+    return { snapshot, failedAt: snapshot ? (row?.failed_at ?? null) : null };
   }
 
   async tryLease(now: number, leaseMs: number): Promise<boolean> {
@@ -79,7 +83,8 @@ export class MemoryStore implements Store {
   budget = new Map<number, number>();
 
   async read(): Promise<StoredSnapshot> {
-    return { snapshot: this.snapshot && structuredClone(this.snapshot), failedAt: this.failedAt };
+    const snapshot = current(this.snapshot && structuredClone(this.snapshot));
+    return { snapshot, failedAt: snapshot ? this.failedAt : null };
   }
   async tryLease(now: number, leaseMs: number): Promise<boolean> {
     if (this.leaseUntil >= now) return false;

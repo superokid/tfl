@@ -120,6 +120,17 @@ h3 { font-size: 1.05rem; }
 .evidence-list ul { padding-left: 0; list-style: none; }
 .evidence-list li.over { color: var(--alert); font-weight: 600; }
 
+.tfl-message { background: var(--neutral-bg); border-radius: 0.6rem; padding: 0.6rem 0.75rem; display: grid; gap: 0.25rem; font-size: 0.92rem; }
+.boards { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.board { border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.6rem 0.75rem; display: grid; gap: 0.4rem; min-width: 0; }
+h4 { margin: 0; font-size: 0.95rem; }
+.board-dir { display: grid; gap: 0.15rem; }
+.board-label { margin: 0; }
+.times { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; }
+.times li { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 0.5rem; font-size: 0.9rem; }
+.due { font-weight: 600; font-variant-numeric: tabular-nums; }
+.dest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .evidence summary { cursor: pointer; color: var(--muted); min-height: 2rem; display: flex; align-items: center; }
 
 .empty { text-align: center; padding: 1.5rem 1rem; }

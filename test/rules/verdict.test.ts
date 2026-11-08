@@ -72,7 +72,7 @@ describe('HIDDEN_DISRUPTION', () => {
     const between = [1, 4, 7, 19, 22, 25, 28];
     const v = judgeLine(twoStations(between, between), now);
     expect(v.summary).toBe(
-      "TfL says Good Service, but there's a 12-minute gap between southbound trains at Euston (usually 3).",
+      "TfL says Good Service, but there's a 12-minute gap between southbound trains at Euston, starting in 7 minutes (usually 3).",
     );
   });
 
@@ -82,6 +82,16 @@ describe('HIDDEN_DISRUPTION', () => {
     const bad40 = twoStations([2, 42, 57], [2, 42, 57], undefined, 15);
     expect(judgeLine(ok20, now).verdict).toBe('MATCH');
     expect(judgeLine(bad40, now).verdict).toBe('HIDDEN_DISRUPTION');
+  });
+});
+
+describe('summary wording', () => {
+  it.each([
+    [[1, 4, 7, 25, 28], "an 18-minute gap"],
+    [[1, 4, 7, 18, 21, 24, 27], "an 11-minute gap"],
+    [[1, 4, 7, 16, 19, 22, 25, 28], "a 9-minute gap"],
+  ])('uses the right article (%j)', (mins, phrase) => {
+    expect(judgeLine(twoStations(mins, mins), now).summary).toContain(phrase);
   });
 });
 

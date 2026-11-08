@@ -9,6 +9,8 @@ export interface DirectionAnalysis {
   thresholdMin: number;
   observedGapMin: number | null;
   gapKind: 'next' | 'between' | null;
+  /** When the largest gap starts, in minutes from now (0 for a wait for the next service). */
+  gapStartMin: number | null;
   horizonMin: number | null;
 }
 
@@ -28,6 +30,7 @@ export function analyseDirection(predictions: Prediction[], now: number, normalG
     thresholdMin,
     observedGapMin: null,
     gapKind: null,
+    gapStartMin: null,
     horizonMin,
   });
 
@@ -54,11 +57,13 @@ export function analyseDirection(predictions: Prediction[], now: number, normalG
 
   let gapMs = 0;
   let gapKind: 'next' | 'between' = 'next';
+  let gapStart = now;
   let prev = now;
   for (const t of inWindow) {
     if (t - prev > gapMs) {
       gapMs = t - prev;
       gapKind = prev === now ? 'next' : 'between';
+      gapStart = prev;
     }
     prev = t;
   }
@@ -67,11 +72,12 @@ export function analyseDirection(predictions: Prediction[], now: number, normalG
   if (last > windowEnd && windowEnd - prev > gapMs) {
     gapMs = windowEnd - prev;
     gapKind = prev === now ? 'next' : 'between';
+    gapStart = prev;
   }
 
   const observedGapMin = gapMs / MIN;
   const reachesFarEnough = horizonMin >= RULES.minHorizonNormalGaps * normalGapMin;
   if (!reachesFarEnough && observedGapMin <= thresholdMin) return unusable('short-horizon', horizonMin);
 
-  return { usable: true, issue: null, thresholdMin, observedGapMin, gapKind, horizonMin };
+  return { usable: true, issue: null, thresholdMin, observedGapMin, gapKind, gapStartMin: (gapStart - now) / MIN, horizonMin };
 }

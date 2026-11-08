@@ -51,6 +51,7 @@ export function preds(
     timingRead: at(now, -readAgoMin),
     confirmed: true,
     terminatesHere: false,
+    destination: null,
     ...extra,
   }));
 }
@@ -74,7 +75,7 @@ export function station(
 }
 
 export function status(description: string, opts: Partial<StatusInput> = {}): StatusInput {
-  return { description, validityPeriods: [], affectedStopIds: [], ...opts };
+  return { description, validityPeriods: [], affectedStopIds: [], reason: null, ...opts };
 }
 
 export function line(statuses: StatusInput[], stations: CheckStation[], mode: Mode = 'tube'): LineInput {

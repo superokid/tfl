@@ -67,7 +67,7 @@ const NOTES: Record<Exclude<Where['state'], 'at'>, string> = {
   locating: 'Finding where you are…',
   denied: 'Location is turned off for this site. Search for your stop by name below instead.',
   failed: "Couldn't get your location. Try again, or search for your stop below.",
-  outside: 'You seem to be outside London. Search for a stop by name below.',
+  outside: 'You seem to be outside London. Search for a stop by name above.',
 };
 
 function NearYou({ idle }: { idle: boolean }) {

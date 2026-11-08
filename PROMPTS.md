@@ -186,3 +186,13 @@ Sample of prompts used (Claude Code), with corrections.
 - Mid-task: "dont use light theme and dark theme. any theme on browser use the same color" → dark mode
   removed, one light theme (SPEC §6 updated).
 - Bundle still over 80 KB (82,210 B, 290 B over), inherited from the lines-near-me branch; left for the user.
+
+## 2026-11-08: free-tier usage
+- "make sure the usage for cloudflare free tier is very efficient in this app, so it not eat my quota too fast".
+- Audit: the server side was already lean (lease-capped refreshes, 2 D1 writes each, edge caches). Checked live
+  that the Cache API works on `workers.dev` (repeat station/line calls reused `checkedAt`).
+- Waste found in the client: a tab switch, going back to a screen or coming back online each cost a Worker
+  request, even seconds after the last one. Now nothing is refetched within 30 s unless Refresh is tapped.
+  Checked in headless Chromium: home → line → home → tab return → line made 0 extra requests; Refresh made 1.
+- Per-request invocation logs turned off (account-wide Workers Logs allowance); errors are still logged. Query
+  strings redacted, since `/api/nearby` URLs carried the user's rounded position into the logs.

@@ -43,7 +43,7 @@ outcome, a false alarm the next worst.
 | Screen | Endpoint | TfL calls | Cache |
 |---|---|---|---|
 | Home | `/api/lines`: statuses (+ recent check verdicts) | 1–2 | D1 snapshot `lines` |
-| Line | `/api/line/:id`: live check + next trains | 1 + check stops | edge 30 s |
+| Line | `/api/line/:id`: live check + next trains | 1 + check stops | edge 30 s; 30–90 s served, refreshed in background |
 | Check every line | `/api/checks`: all verdicts, on request; no UI button | ~42 | D1 snapshot `checks` |
 | Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route | `/api/bus/:route`: status + every stop with next buses | 2 (+2 stop order, cached a day) | edge 30 s |

@@ -172,3 +172,10 @@ Sample of prompts used (Claude Code), with corrections.
   nearby cells are unbounded, so one client could miss the cache every time and exhaust the key's 500/min.
 - "Yes, fix it" → Workers Rate Limiting binding, 60 requests/min per IP per location, on on-demand endpoints;
   429 when over, fails open (ADR-014). Checked the binding docs: per location, eventually consistent, not global.
+
+## 2026-11-08: slow line screen
+- "line/xxx api still slow. and why when I click detail it hit 2 api lines and api/line/xxx".
+  Timed it: cached 0.4 s; a cache miss waits for the slowest of 3 TfL calls, 0.7–4.5 s. The line screen
+  never requests `/api/lines`; likely Home's request still in flight, or StrictMode's double fetch in dev.
+- "Yes, do it" → `/api/line/:id` now uses the ADR-006 windows: 30–90 s old served at once and refreshed
+  in `waitUntil`; older still checked inline.

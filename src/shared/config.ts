@@ -64,7 +64,8 @@ export const LONDON_TZ = 'Europe/London';
 export const LIVE = {
   /** Serve the stored snapshot as-is below this age. */
   freshMs: 30_000,
-  /** Between fresh and this: serve stored, refresh in the background. Above: refresh inline. */
+  /** Between fresh and this: serve stored, refresh in the background. Above: refresh inline. Also the
+   * window for a line screen's cached check (`/api/line/:id`). */
   staleWhileRevalidateMs: 90_000,
   /** A refresh holds the lease this long. It is never released on success (saves a D1 write): it simply
    * expires before the snapshot is due again. A crashed refresher's lease expires the same way. */

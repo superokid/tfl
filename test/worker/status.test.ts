@@ -265,7 +265,7 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     const tfl = fakeTfl();
     const cache = new MemoryJsonCache();
     const limiter = new CallLimiter(60);
-    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now: NOW };
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now: NOW, waitUntil: () => {} };
     const results = await Promise.all(Array.from({ length: 5 }, () => handleLine(d)));
     const b: unknown = await results[0]!.json();
     expect(isLineBody(b)).toBe(true);
@@ -278,7 +278,7 @@ describe('fetch only what the screen needs (ADR-011)', () => {
 
   it('line screen and check-all: arrivals calls go out with the status call, not after it', async () => {
     const line = fakeTfl();
-    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache: new MemoryJsonCache(), limiter: new CallLimiter(60), tfl: line.client, now: NOW };
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache: new MemoryJsonCache(), limiter: new CallLimiter(60), tfl: line.client, now: NOW, waitUntil: () => {} };
     await handleLine(d);
     expect(line.arrivalsDuringStatus).toBe(2);
 

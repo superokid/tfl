@@ -22,3 +22,5 @@ so many requests miss the cache at once, and each would call TfL.
 - Most requests are one D1 read.
 - Data can be up to ~60 s old; the UI shows its age.
 - A crashed refresher's lease expires after 20 s.
+- `/api/line/:id` uses the same windows over its edge cache (< 30 s, 30–90 s, older), without a lease:
+  concurrent requests in an isolate share one fetch.

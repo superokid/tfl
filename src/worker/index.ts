@@ -97,6 +97,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
       limiter: onDemandLimiter,
       tfl: () => createTflClient(env.TFL_APP_KEY),
       now: Date.now(),
+      waitUntil: (p) => ctx.waitUntil(p),
     });
   }
 

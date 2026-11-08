@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
 import { type BusTimes, isNearbyBody, type NearbyStop } from '../shared/api';
 import { DISPLAY, NEARBY } from '../shared/config';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { Updated } from './ui';
 import { formatDue } from './view';
+import { useWhere, type Where } from './where';
 
 /** "38 · to Victoria · 2 min, 9 min, 14 min": one route and destination at a stop. */
 export function BusTimesRow({ row, now }: { row: BusTimes; now: number }) {
@@ -25,42 +25,6 @@ export function BusTimesRow({ row, now }: { row: BusTimes; now: number }) {
   );
 }
 
-/** Where the passenger is, rounded to a ~100 m cell on the phone: the exact position never leaves it. */
-type Where = { state: 'off' | 'locating' | 'denied' | 'failed' | 'outside' } | { state: 'at'; lat: string; lon: string };
-
-function useWhere(): [Where, () => void] {
-  const [where, setWhere] = useState<Where>({ state: 'off' });
-  const locate = useCallback(() => {
-    if (!('geolocation' in navigator)) return setWhere({ state: 'failed' });
-    setWhere({ state: 'locating' });
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const b = NEARBY.bounds;
-        const inLondon = coords.latitude >= b.south && coords.latitude <= b.north && coords.longitude >= b.west && coords.longitude <= b.east;
-        setWhere(
-          inLondon
-            ? { state: 'at', lat: coords.latitude.toFixed(NEARBY.coordDecimals), lon: coords.longitude.toFixed(NEARBY.coordDecimals) }
-            : { state: 'outside' },
-        );
-      },
-      (err) => setWhere({ state: err.code === err.PERMISSION_DENIED ? 'denied' : 'failed' }),
-      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 10_000 },
-    );
-  }, []);
-  // Already allowed on an earlier visit: find stops straight away, without a prompt.
-  useEffect(() => {
-    let live = true;
-    navigator.permissions
-      ?.query({ name: 'geolocation' })
-      .then((p) => live && p.state === 'granted' && locate())
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [locate]);
-  return [where, locate];
-}
-
 const NOTES: Record<Exclude<Where['state'], 'at'>, string> = {
   off: 'See the next buses at the stops around you. Your location is rounded to about 100 m and never stored.',
   locating: 'Finding where you are…',
@@ -70,7 +34,7 @@ const NOTES: Record<Exclude<Where['state'], 'at'>, string> = {
 };
 
 function NearYou({ idle }: { idle: boolean }) {
-  const [where, locate] = useWhere();
+  const [where, locate] = useWhere({ bounds: NEARBY.bounds, auto: true });
   const url = where.state === 'at' ? `/api/nearby?lat=${where.lat}&lon=${where.lon}` : null;
   const live = useLive(url, isNearbyBody, { paused: idle });
   const now = useServerNow(live.data, live.receivedAt);

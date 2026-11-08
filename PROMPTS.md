@@ -148,3 +148,10 @@ Sample of prompts used (Claude Code), with corrections.
 - Fixed: 3 per platform with "More times"; stop letter and direction from the arrivals already fetched (no
   extra call); TfL's reason under problem lines; one search box; page titles per screen.
 - Another session was editing the same folder, so this work moved to its own worktree.
+
+## 2026-11-08: lines near me
+- "add a button use my current location to filte" (cut off) → asked; answer: filter rail lines near me.
+- Checked live: route sequences give every stop's lat/lon, so the phone filters on its own; the position
+  is never sent (ADR-013).
+- The feature (~690 B gzipped) took the bundle 70 B over the 80 KB total budget; asked before raising it.
+

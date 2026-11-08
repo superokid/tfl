@@ -55,6 +55,9 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
   needs no extra call. That `towards` can differ from the StopPoint `Towards` (RC: "Baker Street Or Great
   Portand Street" vs "Marble Arch Or Great Portland Street"); the letter matches.
 
+**Stop positions** `/Line/{id}/Route/Sequence/{dir}`: every `stopPoint` has numeric `lat`/`lon` (checked
+Central and Elizabeth; all 457 stations in the index got one). A hub's stops each carry their own.
+
 ## Still to verify
 - How often `timing.read` advances; responses during a partial TfL outage.
 - Key in a header instead of the URL.

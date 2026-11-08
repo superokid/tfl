@@ -134,6 +134,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 }
 .tab[aria-selected='true'] { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
 .tab-summary { font-weight: 600; margin: 0.25rem 0 0.5rem; }
+.near-stations { margin: 0 0 0.5rem; }
 
 /* Line list (TfL-style) */
 .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }

@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { NEAR_LINES } from '../shared/config';
 import { isLinesBody, type LineStatus } from '../shared/api';
 import type { VerdictKind } from '../shared/rules/types';
 import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { BusTab } from './Buses';
+import { useIndex } from './Search';
 import { LoadError, StaleBanner, StatusText, Updated, useTitle } from './ui';
-import { rowNote, rowReason, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
+import { formatDistance, rowNote, rowReason, sortLines, stationsNear, TABS, tabOf, tabSummary, type StationNear, type Tab } from './view';
+import { useWhere, type Where } from './where';
 
 const TAB_KEY = 'tfl:tab';
 
@@ -43,6 +46,16 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
   const alerts = live.data?.lines.filter((l) => isAlert(checks?.lines[l.lineId]?.verdict)) ?? [];
   const tabLabel = TABS.find((t) => t.id === tab)!.label;
   const inTab = live.data ? sortLines(live.data.lines.filter((l) => tabOf(l.mode) === tab)) : [];
+
+  // "Lines near me": the position stays on the phone, matched against station positions in the index.
+  const [where, locate, clearWhere] = useWhere({ bounds: null, auto: false });
+  const index = useIndex(rail && where.state === 'at');
+  const near =
+    where.state === 'at' && index
+      ? stationsNear(index.stations, { lat: Number(where.lat), lon: Number(where.lon) }, new Set(inTab.map((l) => l.lineId)), NEAR_LINES)
+      : [];
+  const nearLines = new Set(near.flatMap((s) => s.lines));
+  const shown = near.length > 0 ? inTab.filter((l) => nearLines.has(l.lineId)) : inTab;
 
   return (
     <main className="home">
@@ -87,9 +100,16 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         )
       ) : (
         <section aria-label={`${tabLabel} lines`}>
-          <p className="tab-summary">{tabSummary(inTab, tabLabel)}</p>
+          <div className="near-top">
+            <p className="tab-summary">{tabSummary(shown, tabLabel)}
+              {near.length > 0 && ' near you'}</p>
+            <button type="button" className="button" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
+              {where.state === 'off' ? 'Lines near me' : 'All lines'}
+            </button>
+          </div>
+          <NearNote where={where} index={index} near={near} tabLabel={tabLabel} />
           <ul className="lines">
-            {inTab.map((l) => (
+            {shown.map((l) => (
               <li key={l.lineId}>
                 <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} />
               </li>
@@ -98,6 +118,31 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         </section>
       )}
     </main>
+  );
+}
+
+/** Which stations set the filter, or why every line is still shown. */
+function NearNote({ where, index, near, tabLabel }: { where: Where; index: unknown; near: StationNear[]; tabLabel: string }) {
+  const at = where.state === 'at';
+  if (where.state === 'off') return null;
+  if (!near.length)
+    return (
+      <p className="small muted">
+        {where.state === 'locating' || (at && index === undefined)
+          ? 'Finding stations near you…'
+          : `${at && index ? `No ${tabLabel} station within ${formatDistance(NEAR_LINES.farM)}` : "Couldn't get your location"}, so every line is shown.`}
+      </p>
+    );
+  return (
+    <p className="small near-stations">
+      Nearest:{' '}
+      {near.map((s, i) => (
+        <span key={s.id}>
+          {i > 0 && ' · '}
+          <a href={href({ page: 'station', id: s.id })}>{s.name}</a> <span className="muted">{formatDistance(s.distanceM)}</span>
+        </span>
+      ))}
+    </p>
   );
 }
 

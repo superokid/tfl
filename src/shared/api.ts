@@ -111,7 +111,8 @@ export interface StatusBody extends Snapshot {
 
 /** GET /api/index: everything the search box needs, so typing never calls TfL for stations or routes. */
 export interface IndexBody {
-  stations: { id: string; name: string; lines: string[] }[];
+  /** `lat`/`lon` let the phone find lines near you without sending its position anywhere. */
+  stations: { id: string; name: string; lines: string[]; lat?: number; lon?: number }[];
   routes: { id: string; name: string }[];
 }
 

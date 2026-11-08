@@ -73,7 +73,7 @@ export default {
 
     if (url.pathname === '/api/index') {
       const body: IndexBody = {
-        stations: STATIONS.stations.map(({ id, name, lines }) => ({ id, name, lines })),
+        stations: STATIONS.stations.map(({ id, name, lines, lat, lon }) => ({ id, name, lines, lat, lon })),
         routes: BUSES.routes,
       };
       return json(body, { headers: { 'Cache-Control': 'public, max-age=86400' } });

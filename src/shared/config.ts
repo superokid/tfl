@@ -90,6 +90,19 @@ export const LIVE = {
 } as const;
 
 /**
+ * "Lines near me" on the rail tabs (ADR-013): worked out on the phone from station positions in the index,
+ * so the position is never sent. Straight-line distance.
+ */
+export const NEAR_LINES = {
+  /** A station counts as near within this (~10 min walk). */
+  radiusM: 800,
+  /** The closest this many near stations set the filter. */
+  maxStations: 4,
+  /** None near: the closest one still counts up to this far; beyond it, every line is shown. */
+  farM: 5000,
+} as const;
+
+/**
  * Bus stops near the passenger (ADR-012). Coordinates are rounded to a ~100 m cell, so neighbours share
  * one cached answer and the exact position never reaches the Worker. Stops don't move: the list is cached
  * a day per cell. Times reuse the 30 s per-stop cache, so a nearby screen costs at most 1 + maxStops TfL

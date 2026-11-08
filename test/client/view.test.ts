@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkCard,
+  distanceM,
   evidenceText,
   formatAge,
+  formatDistance,
   formatDue,
   prettyStatus,
   rowNote,
@@ -11,6 +13,7 @@ import {
   searchByName,
   searchRoutes,
   sortLines,
+  stationsNear,
   statusTone,
   stopDetail,
   tabOf,
@@ -150,4 +153,46 @@ describe('search', () => {
     expect(searchRoutes(routes, 'n3').map((r) => r.name)).toEqual(['N3', 'N38']);
     expect(searchRoutes(routes, 'bank')).toEqual([]);
   });
+});
+
+describe('lines near me', () => {
+  const at = { lat: 51.5, lon: 0 };
+  /** A station `m` metres due north of `at`. */
+  const st = (id: string, m: number, lines: string[]) => ({ id, name: id, lines, lat: 51.5 + m / 111_195, lon: 0 });
+  const stations = [
+    st('far', 3000, ['victoria']),
+    st('b', 600, ['central', 'dlr']),
+    st('a', 200, ['central']),
+    st('c', 700, ['dlr']),
+    { id: 'no-coords', name: 'no-coords', lines: ['central'] },
+    st('d', 750, ['central']),
+    st('e', 790, ['central']),
+  ];
+  const opts = { radiusM: 800, maxStations: 3, farM: 5000 };
+
+  it('distance, flat-earth: fine across London', () => {
+    expect(distanceM(at, { lat: 51.509, lon: 0 })).toBeCloseTo(1001, -1);
+    expect(distanceM(at, { lat: 51.5, lon: 0.01 })).toBeCloseTo(692, -1);
+  });
+
+  it('the closest stations on the tab\'s lines within the radius, nearest first, capped', () => {
+    expect(stationsNear(stations, at, new Set(['central', 'victoria']), opts)).toEqual([
+      { id: 'a', name: 'a', lines: ['central'], distanceM: 200 },
+      { id: 'b', name: 'b', lines: ['central'], distanceM: 600 },
+      { id: 'd', name: 'd', lines: ['central'], distanceM: 750 },
+    ]);
+  });
+
+  it('none near: the closest one still counts, up to farM; beyond it, none', () => {
+    expect(stationsNear(stations, at, new Set(['victoria']), opts).map((s) => [s.id, s.distanceM])).toEqual([['far', 3000]]);
+    expect(stationsNear(stations, at, new Set(['victoria']), { ...opts, farM: 2000 })).toEqual([]);
+    expect(stationsNear(stations, at, new Set(['jubilee']), opts)).toEqual([]);
+  });
+
+  it.each([
+    [40, '40 m'],
+    [243, '240 m'],
+    [995, '1 km'],
+    [1260, '1.3 km'],
+  ])('%i m → %s', (m, text) => expect(formatDistance(m)).toBe(text));
 });

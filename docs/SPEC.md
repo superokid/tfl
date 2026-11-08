@@ -75,7 +75,7 @@ D1 snapshot (shared, outage fallback) · HTTP cache · `localStorage` (last good
 - TfL has no timetables for the Elizabeth line and Overground (404, even via its own disambiguation links):
   those lines use the per-mode fallback gap, so they can match or be "Can't verify", never flagged.
 - `overrides.ts`: Cable Car is status-only (no predictions exist).
-- Station index for search: `src/shared/reference/stations.json`, same script.
+- Station index for search: `src/shared/reference/stations.json`, same script, with each station's position.
 
 ## 5. Rules
 
@@ -149,7 +149,8 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
   TfL lists them: problems first, then A–Z; status in plain words with an icon, and TfL's reason (2 lines)
   under a line with a problem. Live-check note only when
   it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
-  mismatches.
+  mismatches. "Lines near me" filters a rail tab to the lines at the closest stations, computed on the phone
+  ([ADR-013](adr/013-rail-lines-near-you.md)).
 - **Line:** TfL's status and message; "Live trains" card in plain words (why it couldn't check, if so); next
   trains at both check stations; "How we checked" evidence.
 - **Station / bus stop:** each line's status with live departures by platform, 3 each ("More times" for

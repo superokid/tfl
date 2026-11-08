@@ -17,8 +17,9 @@ export function loadIndex(): Promise<IndexBody | null> {
   return indexPromise;
 }
 
-export function useIndex(enabled: boolean): IndexBody | null {
-  const [index, setIndex] = useState<IndexBody | null>(null);
+/** The index; undefined while loading (or not enabled), null if it couldn't load. */
+export function useIndex(enabled: boolean): IndexBody | null | undefined {
+  const [index, setIndex] = useState<IndexBody | null>();
   useEffect(() => {
     if (!enabled) return;
     let live = true;

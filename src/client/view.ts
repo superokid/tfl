@@ -222,3 +222,54 @@ export function searchRoutes<T extends { name: string }>(routes: T[], query: str
     )
     .slice(0, limit);
 }
+
+// ── Near me ─────────────────────────────────────────────────────────────────────────────────────────
+
+export interface Point {
+  lat: number;
+  lon: number;
+}
+
+/** Metres between two points, flat-earth: well under 1% off across London. */
+export function distanceM(a: Point, b: Point): number {
+  const rad = Math.PI / 180;
+  const x = (b.lon - a.lon) * rad * Math.cos(((a.lat + b.lat) / 2) * rad);
+  const y = (b.lat - a.lat) * rad;
+  return 6_371_000 * Math.hypot(x, y);
+}
+
+export interface StationNear {
+  id: string;
+  name: string;
+  /** Only the lines asked about. */
+  lines: string[];
+  distanceM: number;
+}
+
+/**
+ * Stations on any of `lineIds` near `at`, nearest first: up to `maxStations` within `radiusM`, else the
+ * single closest within `farM`, else none.
+ */
+export function stationsNear(
+  stations: { id: string; name: string; lines: string[]; lat?: number; lon?: number }[],
+  at: Point,
+  lineIds: ReadonlySet<string>,
+  opts: { radiusM: number; maxStations: number; farM: number },
+): StationNear[] {
+  const all: StationNear[] = [];
+  for (const s of stations) {
+    const lines = s.lines.filter((l) => lineIds.has(l));
+    if (lines.length === 0 || s.lat === undefined || s.lon === undefined) continue;
+    all.push({ id: s.id, name: s.name, lines, distanceM: Math.round(distanceM(at, { lat: s.lat, lon: s.lon })) });
+  }
+  all.sort((a, b) => a.distanceM - b.distanceM);
+  const near = all.filter((s) => s.distanceM <= opts.radiusM).slice(0, opts.maxStations);
+  if (near.length > 0) return near;
+  return all[0] && all[0].distanceM <= opts.farM ? [all[0]] : [];
+}
+
+/** 243 → "240 m", 1260 → "1.3 km". */
+export function formatDistance(m: number): string {
+  const r = Math.round(m / 10) * 10;
+  return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1).replace(/\.0$/, '')} km`;
+}

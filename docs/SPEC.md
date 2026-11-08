@@ -48,6 +48,7 @@ outcome, a false alarm the next worst.
 | Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route | `/api/bus/:route`: status + every stop with next buses | 2 (+2 stop order, cached a day) | edge 30 s |
 | Bus stop search | `/api/search?q=` (≥ 3 chars) | 1 | edge 1 day |
+| Bus stops near you | `/api/nearby?lat&lon` (rounded ~100 m, [ADR-012](adr/012-bus-stops-near-you.md)) | 1 (stop list, cached a day) + ≤ 5 | stop list 1 day; times share the 30 s station cache |
 
 D1 snapshots: < 30 s fresh; 30–90 s served while the lease winner refreshes in `waitUntil`; > 90 s refreshed
 inline. TfL down or invalid body → last good snapshot, `stale: true`, 10 s back-off. D1 down → direct
@@ -152,6 +153,8 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
   trains at both check stations; "How we checked" evidence.
 - **Station / bus stop:** each line's status with live departures by platform; bus stops list routes with
   destination and next 3 times.
+- **Bus tab:** saved stops and routes, one box for a stop name or route number, then "Near you": the 5
+  closest stops (letter, direction, distance) with the next buses per route, from "Use my location".
 - **Bus route:** TfL's status and message, then a direction toggle and every stop in order with its next
   3 buses (stop letters as on the flag); tap a stop for its board. Not checked against live buses.
 - States: loading skeleton, stale banner, device copy when offline, retry, "paused" after 10 min idle.

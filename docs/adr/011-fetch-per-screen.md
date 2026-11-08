@@ -16,6 +16,7 @@ user request". Bus users had nothing to use.
 | Station or bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route: status + next buses at every stop | `/api/bus/:route` | 2 (+2 for stop order, cached a day) | edge 30 s, shared in-flight |
 | Bus stop search | `/api/search?q=` | 1 per new query | edge 1 day |
+| Bus stops near you ([ADR-012](012-bus-stops-near-you.md)) | `/api/nearby?lat&lon` | 1 + ≤ 5 | stop list 1 day, times 30 s |
 | Search index | `/api/index` | 0 (generated) | browser 1 day |
 
 UI: mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus), TfL's status in plain words first, the

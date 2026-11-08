@@ -113,3 +113,13 @@ Sample of prompts used (Claude Code), with corrections.
 - "make sure not spamming my cloudflare api limit & have good budget": status and times in one response
   (1 Worker request per minute while the page is open), stop order cached a day (2 TfL calls per refresh),
   30 s edge cache shared by everyone, no D1 writes. Tests assert 4 calls cold, 0 within 30 s, 2 after.
+
+## 2026-11-08: bus stops near you
+- "Instead of check bus number, is it better just put the station location, and show how many minutes for the
+  next bus" → "yes fix it. and cloudflare budged friendly". Bus tab is now stop-first: "Use my location"
+  lists the 5 closest stops with next buses (ADR-012).
+- Checked live first: nearby stops is one call, but TfL won't take several stops in one arrivals call (404),
+  so times reuse the per-stop 30 s cache. Location rounded to ~100 m on the phone; stop list cached a day per
+  cell; one Worker request per minute; no D1 writes.
+- Screenshots found the "›" wrapping onto its own line and two "updated" rows on the Bus tab (it was also
+  polling rail status it didn't show). Both fixed; the search box moved above the nearby list.

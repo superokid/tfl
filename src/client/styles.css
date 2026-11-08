@@ -188,7 +188,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .section-title { font-size: 1rem; font-weight: 600; margin: 0.25rem 0 0.5rem; }
 
 .boards { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
-.board { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.7rem 0.85rem; display: grid; gap: 0.5rem; min-width: 0; }
+.board { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.7rem 0.85rem; display: grid; gap: 0.5rem; align-content: start; min-width: 0; }
 .board h4 { font-size: 0.98rem; }
 .board h4 a { text-decoration: none; }
 .board-dir { display: grid; gap: 0.15rem; }

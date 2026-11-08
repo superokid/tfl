@@ -1,0 +1,34 @@
+name: Live smoke test
+
+# Checks the deployed API's response schemas every 6 h (SPEC §7).
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      LIVE_URL: ${{ vars.LIVE_URL }}
+    steps:
+      - name: Check LIVE_URL is configured
+        id: guard
+        run: |
+          if [ -z "$LIVE_URL" ]; then
+            echo "::warning::Repository variable LIVE_URL not set; skipping."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.enabled == 'true'
+      - uses: oven-sh/setup-bun@v2
+        if: steps.guard.outputs.enabled == 'true'
+        with:
+          bun-version: 1.3.14
+      - if: steps.guard.outputs.enabled == 'true'
+        run: bun scripts/smoke.ts "$LIVE_URL"

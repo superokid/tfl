@@ -58,7 +58,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         <nav className="saved" aria-label="Saved">
           {saved.map((s) => (
             <a key={`${s.route.page}:${s.route.id}`} className="chip" href={href(s.route)}>
-              <span aria-hidden="true">★</span> {s.name}
+              <span aria-hidden="true">★</span> <span className="chip-name">{s.name}</span>
             </a>
           ))}
         </nav>

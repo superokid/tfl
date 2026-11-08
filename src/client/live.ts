@@ -104,7 +104,9 @@ export function useLive<T>(
     try {
       const res = await fetch(url, { signal: controller.signal });
       const body: unknown = await res.json().catch(() => null);
-      if (!res.ok || !valid(body)) throw new Error(res.status === 404 ? 'Not found' : res.ok ? 'Unexpected response' : `HTTP ${res.status}`);
+      if (!res.ok || !valid(body)) throw new Error(
+          res.status === 404 ? 'Not found' : res.status === 429 ? 'Too many requests. Try again in a minute.' : res.ok ? 'Unexpected response' : `HTTP ${res.status}`,
+        );
       if (saveAs) {
         try {
           localStorage.setItem(saveAs, JSON.stringify({ data: body, savedAt: Date.now() }));

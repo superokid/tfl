@@ -11,6 +11,23 @@ import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithout
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
 
+/**
+ * Per-IP limit for on-demand endpoints (ADR-014). True when over the limit. Fails open: a limiter error
+ * must not take the app down.
+ */
+async function overLimit(request: Request, env: Env): Promise<boolean> {
+  try {
+    const { success } = await env.IP_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' });
+    return !success;
+  } catch (err) {
+    console.error('rate limiter unavailable:', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+const rateLimited = () =>
+  json({ error: 'rate_limited' } satisfies ErrorBody, { status: 429, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } });
+
 const notFound = () =>
   json({ error: 'not_found' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
 
@@ -69,6 +86,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 
   const lineMatch = /^\/api\/line\/([a-z-]{2,30})$/.exec(url.pathname);
   if (lineMatch) {
+    if (await overLimit(request, env)) return rateLimited();
     if (!env.TFL_APP_KEY) {
       return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
@@ -94,6 +112,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const bus = /^\/api\/bus\/([A-Za-z0-9]{1,6})$/.exec(url.pathname);
   const nearby = url.pathname === '/api/nearby';
   if (station || bus || nearby || url.pathname === '/api/search') {
+    if (await overLimit(request, env)) return rateLimited();
     if (!env.TFL_APP_KEY) {
       return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }

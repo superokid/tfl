@@ -58,6 +58,9 @@ TfL call memoised per isolate. Edge-cached endpoints share one in-flight fetch a
 **Budget:** the D1 lease caps refreshes; one refresh makes ≤ 40 TfL calls, and the rest are marked
 `budget` (`CANT_VERIFY`). On-demand endpoints share the per-instance limit above. The D1 per-minute
 counter was dropped to save writes ([ADR-009](adr/009-free-tier-footprint.md), migration 0002).
+On-demand endpoints (line, station, bus, search, nearby) are also limited to 60 requests/min per client IP
+at each Cloudflare location. Over the limit → `429 rate_limited`, `Retry-After: 60`. A limiter error lets
+the request through ([ADR-014](adr/014-per-ip-rate-limit.md)).
 
 **Key:** `app_key` sits in the URL, so TfL URLs are secret. One helper builds them; one redacts them
 before anything is logged, thrown or returned.

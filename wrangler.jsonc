@@ -24,8 +24,12 @@
       "simple": { "limit": 60, "period": 60 }
     }
   ],
+  // Errors (console.error) are logged; the per-request invocation log is not: it counts against the
+  // account-wide Workers Logs allowance (ADR-009). Query strings are redacted: /api/nearby carries a position.
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "invocation_logs": false }
   },
   // Secret names only, never values. Local: .dev.vars (gitignored).
   // Production: `wrangler secret put TFL_APP_KEY`. Declaring it here keeps generated types

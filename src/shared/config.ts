@@ -88,3 +88,19 @@ export const LIVE = {
   /** A station's last good departures are kept this long for outages (Cache API, per data centre). */
   stationKeepMs: 3_600_000,
 } as const;
+
+/**
+ * Bus stops near the passenger (ADR-012). Coordinates are rounded to a ~100 m cell, so neighbours share
+ * one cached answer and the exact position never reaches the Worker. Stops don't move: the list is cached
+ * a day per cell. Times reuse the 30 s per-stop cache, so a nearby screen costs at most 1 + maxStops TfL
+ * calls per 30 s per cell, and nothing when another passenger nearby just looked.
+ */
+export const NEARBY = {
+  /** Decimal places kept: 3 ≈ 110 m north–south, 70 m east–west. */
+  coordDecimals: 3,
+  radiusM: 400,
+  maxStops: 5,
+  stopListKeepMs: 86_400_000,
+  /** Greater London, roughly. Outside it TfL has no buses to show. */
+  bounds: { south: 51.25, north: 51.72, west: -0.56, east: 0.34 },
+} as const;

@@ -60,6 +60,11 @@ Concurrent requests for a station now share one in-flight fetch.
 | Phone screenshots, 360 px, light + dark (CDP-driven, incl. typing in search) | Home, line, station, bus stop, bus route, bus tab, search for "oxford" and "38" |
 | Found and fixed in screenshots | Horizontal overflow from the tab bar; Bus tab off-screen; bus destinations truncated; duplicate station heading |
 | Status ranking | Bakerloo "Severe Delays + Part Suspended" ranks as part-suspended (worse), as on TfL's site |
+- Bus tab "Near you", live, Oxford Circus (emulated location, Playwright at 360 px): 5 stops (RC 42 m, RG 51 m,
+  JC, RF, OH) with next buses; no horizontal overflow, no console errors. Only `lat=51.515&lon=-0.142` left
+  the phone. Returning with location already allowed loads stops without a tap. Paris → 400, no TfL call.
+  The Bus tab no longer fetches `/api/lines`. Tests: 6 TfL calls cold, 0 within 30 s, 5 after; 10 viewers →
+  one fetch per stop; a stop opened elsewhere costs nothing; coordinates never logged.
 - Bus 38 route page, live: 44 + 45 stops with next buses, 2.1 s cold, 13 ms cached, 10 KB. Times progress
   along the route (5 → 6 → 9 → 11 min). Budget test: 4 TfL calls cold, 0 within 30 s, 2 after; 10
   concurrent viewers → 1 fetch.

@@ -100,3 +100,27 @@ export function lineMessages(lineName: string, reasons: (string | null)[]): stri
   const prefix = new RegExp(`^${lineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( line)?:\\s*`, 'i');
   return [...new Set(reasons.filter((r): r is string => !!r).map((r) => r.replace(prefix, '').trim()))].filter(Boolean);
 }
+
+/**
+ * A bus stop's boards → one row per route and destination, soonest first: what a passenger scans at a
+ * stop. Times already gone (over 30 s ago) are dropped.
+ */
+export function busRows(
+  lines: { lineId: string; lineName: string; board: StationBoard }[],
+  now: number,
+  perRow = 3,
+): { routeId: string; routeName: string; destination: string | null; times: number[] }[] {
+  const rows: { routeId: string; routeName: string; destination: string | null; times: number[] }[] = [];
+  for (const { lineId, lineName, board } of lines) {
+    const byDest = new Map<string, number[]>();
+    for (const a of board.directions.flatMap((d) => d.arrivals)) {
+      if (a.at <= now - 30_000) continue;
+      const key = a.terminates ? 'Terminates here' : (a.destination ?? '');
+      byDest.set(key, [...(byDest.get(key) ?? []), a.at]);
+    }
+    for (const [dest, times] of byDest) {
+      rows.push({ routeId: lineId, routeName: lineName, destination: dest || null, times: times.sort((x, y) => x - y).slice(0, perRow) });
+    }
+  }
+  return rows.sort((a, b) => a.times[0]! - b.times[0]! || a.routeName.localeCompare(b.routeName, 'en', { numeric: true }));
+}

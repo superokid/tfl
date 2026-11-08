@@ -45,6 +45,13 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
 
 **Bus** `/Line/Mode/bus` ≈ 348 KB.
 
+**Nearby stops** `/StopPoint?lat&lon&stopTypes=NaptanPublicBusCoachTram&radius=400&modes=bus&returnLines=true`
+- 24 stops around Oxford Circus, sorted by `distance` (metres), ~100 KB raw. Fields used: `id`, `commonName`,
+  `stopLetter`, `distance`, `lines[]`, and `additionalProperties` key `Towards`.
+- Some stops have no `lines` (stands, unused stops): skipped. `stopLetter` can be odd (`->W`): shown only if
+  1–3 letters or digits.
+- `/StopPoint/{id1},{id2}/Arrivals` → 404: arrivals need one call per stop.
+
 ## Still to verify
 - How often `timing.read` advances; responses during a partial TfL outage.
 - Key in a header instead of the URL.

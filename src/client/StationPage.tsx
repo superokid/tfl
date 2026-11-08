@@ -1,11 +1,11 @@
 import { isLinesBody, isStationBody, type LinesBody } from '../shared/api';
-import type { StationBoard } from '../shared/boards';
+import { busRows } from '../shared/boards';
+import { BusTimesRow } from './Buses';
 import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { useSaved } from './saved';
 import { Board } from './LinePage';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
-import { formatDue } from './view';
 
 /** The home screen's last statuses, from this device: shows each line's status here for free. */
 function savedLines(): LinesBody | null {
@@ -41,8 +41,8 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
         now !== null &&
         (isBusStop ? (
           <ul className="bus-departures">
-            {data.lines.map(({ lineId, lineName, board }) => (
-              <BusRow key={lineId} lineId={lineId} name={lineName} board={board} now={now} />
+            {busRows(data.lines, now).map((r) => (
+              <BusTimesRow key={`${r.routeId}-${r.destination}`} row={r} now={now} />
             ))}
           </ul>
         ) : (
@@ -63,37 +63,5 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
           })
         ))}
     </main>
-  );
-}
-
-/** One bus route at a stop: "38 · to Victoria · 3 min, 9 min, 14 min". */
-function BusRow({ lineId, name, board, now }: { lineId: string; name: string; board: StationBoard; now: number }) {
-  const arrivals = board.directions
-    .flatMap((d) => d.arrivals)
-    .filter((a) => a.at > now - 30_000)
-    .sort((a, b) => a.at - b.at);
-  const byDest = new Map<string, number[]>();
-  for (const a of arrivals) {
-    const key = a.terminates ? 'Terminates here' : (a.destination ?? '');
-    byDest.set(key, [...(byDest.get(key) ?? []), a.at]);
-  }
-  return (
-    <>
-      {[...byDest].map(([dest, times]) => (
-        <li key={`${lineId}-${dest}`} className="bus-row">
-          <a className="route-badge" href={href({ page: 'bus', id: lineId })}>
-            {name}
-          </a>
-          <span className="bus-dest">{dest ? `to ${dest}` : ''}</span>
-          <span className="bus-times">
-            {times.slice(0, 3).map((t, i) => (
-              <span key={i} className={i === 0 ? 'due' : 'muted'}>
-                {formatDue(t, now)}
-              </span>
-            ))}
-          </span>
-        </li>
-      ))}
-    </>
   );
 }

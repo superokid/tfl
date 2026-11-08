@@ -76,6 +76,14 @@ const trimTimetable = (body: unknown) => {
   };
 };
 
+const trimStops = (body: unknown) => ({
+  stopPoints: ((body as Json).stopPoints as Json[]).map((p) => ({
+    ...pick(p, ['id', 'commonName', 'stopLetter', 'indicator', 'distance', 'lat', 'lon']),
+    lines: ((p.lines as Json[] | undefined) ?? []).map((l) => pick(l, ['id', 'name'])),
+    additionalProperties: ((p.additionalProperties as Json[] | undefined) ?? []).filter((a) => a.key === 'Towards').map((a) => pick(a, ['key', 'value'])),
+  })),
+});
+
 const identity = (b: unknown) => b;
 
 const CAPTURES: { name: string; path: string; params?: Record<string, string>; trim: (b: unknown) => unknown }[] = [
@@ -90,6 +98,12 @@ const CAPTURES: { name: string; path: string; params?: Record<string, string>; t
   { name: 'arr-bakerloo-harlesden', path: '/Line/bakerloo/Arrivals/940GZZLUHSN', trim: trimArrivals },
   { name: 'arr-bakerloo-queens-park', path: '/Line/bakerloo/Arrivals/940GZZLUQPS', trim: trimArrivals },
   { name: 'tt-victoria-brixton', path: '/Line/victoria/Timetable/940GZZLUBXN', trim: trimTimetable },
+  {
+    name: 'nearby-oxford-circus',
+    path: '/StopPoint',
+    params: { lat: '51.515', lon: '-0.142', stopTypes: 'NaptanPublicBusCoachTram', radius: '400', modes: 'bus', returnLines: 'true' },
+    trim: trimStops,
+  },
   { name: 'tt-northern-euston-outbound', path: '/Line/northern/Timetable/940GZZLUEUS', params: { direction: 'outbound' }, trim: trimTimetable },
 ];
 

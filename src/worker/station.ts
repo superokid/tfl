@@ -128,17 +128,22 @@ async function fetchStation(station: StationEntry, deps: StationDeps): Promise<S
   return { stationId: station.id, name, checkedAt: deps.now, serverNow: deps.now, stale: false, lines };
 }
 
-export async function handleStation(deps: StationDeps): Promise<Response> {
-  const { id, now, cache, limiter } = deps;
-  const station: StationEntry | undefined =
-    deps.stations.stations.find((s) => s.id === id) ??
-    (isBusStopId(id) ? { id, name: '', stopIds: [id], lines: [] } : undefined);
-  if (!station) {
-    return json({ error: 'unknown_station' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
-  }
+/** Resolves a station or single bus stop id; undefined if it's neither. */
+function resolve(deps: StationDeps): StationEntry | undefined {
+  const { id } = deps;
+  return deps.stations.stations.find((s) => s.id === id) ?? (isBusStopId(id) ? { id, name: '', stopIds: [id], lines: [] } : undefined);
+}
 
+/**
+ * Departures for one station or stop: the cached copy if under 30 s old, else one shared fetch; if TfL
+ * fails or the limit is hit, the last good copy marked stale. Null when there's nothing to show.
+ * Used by /api/station and /api/nearby, so both share one cache and one limit.
+ */
+export async function loadStation(deps: StationDeps, station = resolve(deps)): Promise<{ body: StationBody; stale: boolean } | null> {
+  if (!station) return null;
+  const { id, now, cache, limiter } = deps;
   const cached = await cache.get(id).catch(() => null);
-  if (cached && now - cached.checkedAt < LIVE.stationFreshMs) return respond(cached, now, false);
+  if (cached && now - cached.checkedAt < LIVE.stationFreshMs) return { body: cached, stale: false };
 
   let pending = inFlight.get(id);
   if (!pending) {
@@ -152,8 +157,17 @@ export async function handleStation(deps: StationDeps): Promise<Response> {
     void pending.finally(() => inFlight.delete(id));
   }
   const fresh = await pending;
-  if (fresh) return respond(fresh, now, false);
-  return cached
-    ? respond(cached, now, true)
+  if (fresh) return { body: fresh, stale: false };
+  return cached ? { body: cached, stale: true } : null;
+}
+
+export async function handleStation(deps: StationDeps): Promise<Response> {
+  const station = resolve(deps);
+  if (!station) {
+    return json({ error: 'unknown_station' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+  }
+  const got = await loadStation(deps, station);
+  return got
+    ? respond(got.body, deps.now, got.stale)
     : json({ error: 'tfl_unavailable' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '5' } });
 }

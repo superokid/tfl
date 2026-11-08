@@ -31,7 +31,7 @@ export function useIndex(enabled: boolean): IndexBody | null {
 }
 
 /** Bus stops by name: TfL search, from 3 characters, 400 ms after typing stops (cached a day server-side). */
-function useBusStops(query: string): { stops: BusSearchBody['stops']; loading: boolean } {
+export function useBusStops(query: string): { stops: BusSearchBody['stops']; loading: boolean } {
   const q = query.trim();
   const [result, setResult] = useState<{ q: string; stops: BusSearchBody['stops'] }>({ q: '', stops: [] });
   useEffect(() => {

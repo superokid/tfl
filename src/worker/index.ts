@@ -6,6 +6,7 @@ import { redact } from '../shared/tfl-url';
 import { json } from './http';
 import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
 import { handleLine } from './line';
+import { handleNearby } from './nearby';
 import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
@@ -80,12 +81,25 @@ export default {
 
     const station = /^\/api\/station\/([A-Za-z0-9]{3,20})$/.exec(url.pathname);
     const bus = /^\/api\/bus\/([A-Za-z0-9]{1,6})$/.exec(url.pathname);
-    if (station || bus || url.pathname === '/api/search') {
+    const nearby = url.pathname === '/api/nearby';
+    if (station || bus || nearby || url.pathname === '/api/search') {
       if (!env.TFL_APP_KEY) {
         return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
       }
       const tfl = () => createTflClient(env.TFL_APP_KEY);
       const now = Date.now();
+      if (nearby) {
+        return handleNearby(url.searchParams.get('lat'), url.searchParams.get('lon'), {
+          stations: STATIONS,
+          buses: BUSES,
+          reference: RAIL_REFERENCE,
+          cache: new EdgeJsonCache(),
+          stationCache: new EdgeStationCache(),
+          limiter: onDemandLimiter,
+          tfl,
+          now,
+        });
+      }
       if (station) {
         return handleStation({
           id: station[1]!,

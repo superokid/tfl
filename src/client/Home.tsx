@@ -4,9 +4,9 @@ import type { VerdictKind } from '../shared/rules/types';
 import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
-import { useIndex } from './Search';
+import { BusTab } from './Buses';
 import { LoadError, StaleBanner, StatusText, Updated } from './ui';
-import { formatAge, rowNote, searchRoutes, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
+import { formatAge, rowNote, sortLines, TABS, tabOf, tabSummary, type Tab } from './view';
 
 const TAB_KEY = 'tfl:tab';
 
@@ -20,9 +20,11 @@ function readTab(): Tab {
 }
 
 export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
-  const live = useLive('/api/lines', isLinesBody, { paused: idle, saveAs: 'tfl:lines' });
-  const now = useServerNow(live.data, live.receivedAt);
   const [tab, setTabState] = useState<Tab>(readTab);
+  // The Bus tab has its own data: rail statuses aren't fetched while it's open.
+  const rail = tab !== 'bus';
+  const live = useLive(rail ? '/api/lines' : null, isLinesBody, { paused: idle, saveAs: 'tfl:lines' });
+  const now = useServerNow(live.data, live.receivedAt);
   const setTab = (t: Tab) => {
     setTabState(t);
     try {
@@ -64,10 +66,10 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         </nav>
       )}
 
-      <Updated age={age} stale={stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
-      <StaleBanner show={stale} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+      {rail && <Updated age={age} stale={stale} loading={live.loading} paused={idle} onRefresh={live.reload} />}
+      {rail && <StaleBanner show={stale} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />}
 
-      {alerts.length > 0 && (
+      {rail && alerts.length > 0 && (
         <section className="alerts" aria-label="Live train alerts">
           {alerts.map((l) => (
             <a key={l.lineId} className="alert" href={href({ page: 'line', id: l.lineId })} style={{ borderLeftColor: lineColour(l.lineId) }}>
@@ -86,7 +88,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
       </div>
 
       {tab === 'bus' ? (
-        <BusTab saved={saved} />
+        <BusTab saved={saved} idle={idle} />
       ) : !live.data ? (
         live.loading ? (
           <Skeleton />
@@ -158,51 +160,6 @@ function CheckAll({
             : 'Compares each line’s status with live arrivals at two stations. Open a line to check just that one.'}
       </p>
     </div>
-  );
-}
-
-function BusTab({ saved }: { saved: SavedItem[] }) {
-  const [q, setQ] = useState('');
-  const index = useIndex(true);
-  const routes = index ? searchRoutes(index.routes, q, 12) : [];
-  const savedBus = saved.filter((s) => s.route.page === 'bus' || (s.route.page === 'station' && s.route.id.startsWith('490')));
-  return (
-    <section className="bus-tab" aria-label="Buses">
-      <label className="field">
-        <span className="small muted">Bus route</span>
-        <input type="search" inputMode="text" placeholder="e.g. 38 or N29" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
-      {q && (
-        <ul className="route-grid">
-          {routes.map((r) => (
-            <li key={r.id}>
-              <a className="route-badge route-badge-big" href={href({ page: 'bus', id: r.id })}>
-                {r.name}
-              </a>
-            </li>
-          ))}
-          {index && routes.length === 0 && <li className="muted small">No route "{q}".</li>}
-        </ul>
-      )}
-      {savedBus.length > 0 && !q && (
-        <ul className="lines">
-          {savedBus.map((s) => (
-            <li key={s.route.id}>
-              <a className="line-row" href={href(s.route)}>
-                <span className="line-name">{s.route.page === 'bus' ? `Route ${s.name}` : s.name}</span>
-                <span className="small muted">{s.detail ?? (s.route.page === 'bus' ? 'Bus route' : 'Bus stop')}</span>
-                <span className="chevron" aria-hidden="true">
-                  ›
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="small muted">
-        For live bus times, search your stop by name in the box above (e.g. "Oxford Circus"). Open a route to see its status.
-      </p>
-    </section>
   );
 }
 

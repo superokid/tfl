@@ -172,6 +172,55 @@ export function isBusRouteBody(value: unknown): value is BusRouteBody {
   );
 }
 
+/** One route's next buses at a stop, to one destination: "38 to Victoria · 2, 9, 14 min". */
+export interface BusTimes {
+  routeId: string;
+  routeName: string;
+  /** "Victoria", "Terminates here", or null if TfL gave none. */
+  destination: string | null;
+  /** Epoch ms, soonest first, at most 3. */
+  times: number[];
+}
+
+export interface NearbyStop {
+  id: string;
+  name: string;
+  /** Letter on the stop flag ("RC"), if TfL gives one. */
+  letter: string | null;
+  towards: string | null;
+  /** Metres from the passenger's ~100 m cell. */
+  distanceM: number;
+  /** False when TfL's arrivals call failed or was skipped: the UI says so. */
+  live: boolean;
+  /** Soonest first. */
+  buses: BusTimes[];
+}
+
+/** GET /api/nearby?lat&lon: the closest bus stops with their next buses. One request per refresh. */
+export interface NearbyBody {
+  stops: NearbyStop[];
+  /** Oldest stop's data time, so the "Updated" age is never flattering. */
+  checkedAt: number;
+  serverNow: number;
+  stale: boolean;
+}
+
+export function isNearbyBody(value: unknown): value is NearbyBody {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.checkedAt === 'number' &&
+    typeof v.serverNow === 'number' &&
+    typeof v.stale === 'boolean' &&
+    Array.isArray(v.stops) &&
+    v.stops.every((s: unknown) => {
+      if (typeof s !== 'object' || s === null) return false;
+      const x = s as Record<string, unknown>;
+      return typeof x.id === 'string' && typeof x.name === 'string' && typeof x.distanceM === 'number' && Array.isArray(x.buses);
+    })
+  );
+}
+
 /** GET /api/station/:id: live departures at one station or bus stop, per line or route. */
 export interface StationBody {
   stationId: string;

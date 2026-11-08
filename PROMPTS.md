@@ -137,4 +137,4 @@ Sample of prompts used (Claude Code), with corrections.
 - "Deploy and check": the edge cache does work on `*.workers.dev` (max-age counts down, hits ≈ 0.25 s). From
   Indonesia, requests alternate SIN/NRT colos, each with its own cache, and every cold call crosses to London.
 - Correction: deploying from a clean worktree (no `.wrangler` state) auto-created D1 in APAC with no tables,
-  not `weur`. Needs recreating near London, with `database_id` pinned in `wrangler.jsonc`.
+  not `weur`. Deleted it, recreated in `weur`, pinned `database_id` in `wrangler.jsonc`, migrated, redeployed.

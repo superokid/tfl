@@ -104,3 +104,11 @@ export const NEARBY = {
   /** Greater London, roughly. Outside it TfL has no buses to show. */
   bounds: { south: 51.25, north: 51.72, west: -0.56, east: 0.34 },
 } as const;
+
+/** How much each screen shows before "More": enough to plan the next trip without scrolling past it. */
+export const DISPLAY = {
+  /** Departures per platform or direction on a station board. */
+  boardRows: 3,
+  /** Routes per stop in the "Near you" list. */
+  nearbyRowsPerStop: 4,
+} as const;

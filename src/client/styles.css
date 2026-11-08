@@ -186,6 +186,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .check-alert .check-title { color: var(--closed); }
 .check-muted { border-left: 6px solid var(--border); }
 .section-title { font-size: 1rem; font-weight: 600; margin: 0.25rem 0 0.5rem; }
+.section-sub { margin: -0.4rem 0 0.5rem; }
 
 .boards { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
 .board { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.7rem 0.85rem; display: grid; gap: 0.5rem; align-content: start; min-width: 0; }
@@ -197,6 +198,10 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .times li { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 0.5rem; font-size: 0.92rem; }
 .due { font-weight: 700; font-variant-numeric: tabular-nums; }
 .dest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.more {
+  justify-self: start; font: inherit; font-size: 0.88rem; color: var(--accent); background: none; border: 0;
+  padding: 0.4rem 0; min-height: 2.75rem; margin-top: -0.4rem; cursor: pointer;
+}
 
 .line-card { border-left: 6px solid var(--muted); gap: 0.6rem; }
 .line-card .board { border: 0; padding: 0; }

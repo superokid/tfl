@@ -127,3 +127,12 @@ Sample of prompts used (Claude Code), with corrections.
 - Screenshots found the "›" wrapping onto its own line and two "updated" rows on the Bus tab (it was also
   polling rail status it didn't show). Both fixed; the search box moved above the nearby list.
 
+
+## 2026-11-08: slow APIs
+- "review & fix some api are very slow". Timed every endpoint cold on `bun run dev`. TfL is noisy, 0.4–3.7 s
+  per call; `/StopPoint` and `/Line` arrivals are no different, and `?detail=true` is 3–4 s.
+- Cause: line and check-all waited for the status call before sending arrivals. They now go out together;
+  2 calls are reserved for status and detail. Home also reads both D1 snapshots at once.
+- Cold `/api/line/:id` went from 0.8–2.6 s to 0.4–0.9 s; `/api/checks` went from 4.1 s to 2.6 s.
+- Unverified: the Cache API may do nothing on `*.workers.dev` (the docs only promise it on custom domains).
+  If so, every edge-cached endpoint is cold in production.

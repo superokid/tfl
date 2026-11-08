@@ -91,8 +91,8 @@ export function summarise(snapshot: Snapshot | null, now: number): CheckSummary 
   };
 }
 
-async function respondLines(snapshot: LinesSnapshot, deps: LinesDeps, stale: boolean): Promise<Response> {
-  const checks = deps.checks ? summarise((await deps.checks.read().catch(() => null))?.snapshot ?? null, deps.now) : null;
+async function respondLines(snapshot: LinesSnapshot, deps: LinesDeps, checksRead: Promise<Snapshot | null>, stale: boolean): Promise<Response> {
+  const checks = summarise(await checksRead, deps.now);
   const body: LinesBody = { ...snapshot, serverNow: deps.now, stale, checks };
   return json(body, { headers: { 'Cache-Control': `public, max-age=${maxAge(snapshot.checkedAt, deps.now)}` } });
 }
@@ -110,12 +110,14 @@ export function handleStatus(deps: StatusDeps): Promise<Response> {
 
 /** GET /api/lines: TfL statuses for the home screen, plus recent check-all verdicts if any. */
 export function handleLines(deps: LinesDeps): Promise<Response> {
+  // Read alongside the lines snapshot, not after it: one D1 round trip instead of two.
+  const checksRead = deps.checks ? deps.checks.read().then((r) => r.snapshot, () => null) : Promise.resolve(null);
   return serve<LinesSnapshot>({
     store: deps.store,
     now: deps.now,
     waitUntil: deps.waitUntil,
     build: () => buildLinesSnapshot(deps.tfl(), deps.reference, deps.now),
-    respond: (s, stale) => respondLines(s, deps, stale),
+    respond: (s, stale) => respondLines(s, deps, checksRead, stale),
   });
 }
 

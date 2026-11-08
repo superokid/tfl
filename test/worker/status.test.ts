@@ -22,14 +22,20 @@ function fakeTfl(behaviour: Behaviour = 'ok') {
   const seen: string[] = [];
   let inFlight = 0;
   let maxInFlight = 0;
+  let statusPending = 0;
+  let arrivalsDuringStatus = 0;
   const fetchImpl = (async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
+    const path = url.pathname;
+    const isStatus = path.endsWith('/Status');
     seen.push(url.toString());
+    if (path.includes('/Arrivals/') && statusPending > 0) arrivalsDuringStatus++;
+    if (isStatus) statusPending++;
     inFlight++;
     maxInFlight = Math.max(maxInFlight, inFlight);
     await new Promise((r) => setTimeout(r, 1));
     inFlight--;
-    const path = url.pathname;
+    if (isStatus) statusPending--;
     const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
     if (behaviour === 'down') return reply({ message: 'Service Unavailable' }, 503);
     if (path.endsWith('/Status')) {
@@ -43,6 +49,10 @@ function fakeTfl(behaviour: Behaviour = 'ok') {
     seen,
     get maxInFlight() {
       return maxInFlight;
+    },
+    /** Arrivals calls sent while a status call was still waiting for TfL. */
+    get arrivalsDuringStatus() {
+      return arrivalsDuringStatus;
     },
     client: () => createTflClient(KEY, fetchImpl),
   };
@@ -264,5 +274,17 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     await handleLine({ ...d, now: NOW + 5_000 });
     expect(tfl.seen.filter((u) => u.includes('/Arrivals'))).toHaveLength(2);
     expect((await handleLine({ ...d, lineId: 'nope' })).status).toBe(404);
+  });
+
+  it('line screen and check-all: arrivals calls go out with the status call, not after it', async () => {
+    const line = fakeTfl();
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache: new MemoryJsonCache(), limiter: new CallLimiter(60), tfl: line.client, now: NOW };
+    await handleLine(d);
+    expect(line.arrivalsDuringStatus).toBe(2);
+
+    const all = fakeTfl();
+    await handleStatus(deps(new MemoryStore<Snapshot>(), all).d);
+    expect(all.arrivalsDuringStatus).toBe(LIVE.concurrency - 1);
+    expect(all.seen.length).toBeLessThanOrEqual(LIVE.maxCallsPerRefresh);
   });
 });

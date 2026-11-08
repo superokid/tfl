@@ -4,6 +4,8 @@
  * - buildLineReport: one line's live check + next trains (line screen), 1 + its check stops.
  * - buildSnapshot: every line's live check (the "Check all lines" button), ~42 calls.
  * Each throws TflError only when the status call fails; arrivals failures degrade the affected line only.
+ * Status and arrivals calls go out together: TfL often takes 1–3 s per call, so chaining them doubled
+ * the wait.
  */
 import {
   LINES_VERSION,
@@ -47,7 +49,8 @@ async function fetchArrivals(tfl: TflClient, reference: ReferenceFile, lines: Li
   const linesAtStop = new Map<string, string[]>();
   for (const l of lines) for (const s of l.stations) linesAtStop.set(s.stopId, [...(linesAtStop.get(s.stopId) ?? []), l.lineId]);
   const bound = Object.fromEntries(reference.lines.map((l) => [l.lineId, l.boundDirections]));
-  const callsLeft = LIVE.maxCallsPerRefresh - tfl.calls;
+  // Status + detail run alongside, so their 2 calls are reserved up front.
+  const callsLeft = LIVE.maxCallsPerRefresh - 2;
   const out: ArrivalsByStop = new Map();
   await Promise.all(
     [...linesAtStop.keys()].map(async (stopId, i) => {
@@ -124,8 +127,10 @@ export async function buildLineReport(
 ): Promise<LineReport | null> {
   const ref = reference.lines.find((l) => l.lineId === lineId);
   if (!ref) return null;
-  const statuses = await fetchStatuses(tfl, `/Line/${ref.lineId}/Status`);
-  const arrivals: ArrivalsByStop = ref.statusOnly ? new Map() : await fetchArrivals(tfl, reference, [ref]);
+  const [statuses, arrivals] = await Promise.all([
+    fetchStatuses(tfl, `/Line/${ref.lineId}/Status`),
+    ref.statusOnly ? new Map() : fetchArrivals(tfl, reference, [ref]),
+  ]);
   return report(ref, statuses.get(ref.lineId) ?? [], arrivals, now);
 }
 
@@ -136,8 +141,10 @@ export async function buildSnapshot(
   now: number,
   previous: Snapshot | null,
 ): Promise<Snapshot> {
-  const statuses = await fetchStatuses(tfl, `/Line/Mode/${modesOf(reference)}/Status`);
-  const arrivals = await fetchArrivals(tfl, reference, reference.lines.filter((l) => !l.statusOnly));
+  const [statuses, arrivals] = await Promise.all([
+    fetchStatuses(tfl, `/Line/Mode/${modesOf(reference)}/Status`),
+    fetchArrivals(tfl, reference, reference.lines.filter((l) => !l.statusOnly)),
+  ]);
   const previousById = new Map(previous?.lines.map((l) => [l.lineId, l]));
   const lines = reference.lines.map((ref) => {
     const r = report(ref, statuses.get(ref.lineId) ?? [], arrivals, now);

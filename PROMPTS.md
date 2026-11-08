@@ -165,3 +165,10 @@ Sample of prompts used (Claude Code), with corrections.
   cached for good. A handler throwing would get Cloudflare's HTML error page. The load test still hit the
   removed `/api/status`. Fixed all of these.
 - Docs: the spec still described the dropped D1 budget counter and smoke-tested `/api/status`.
+
+## 2026-11-08: security review
+- "do security review on the project". No leaks of the key, no injection, no XSS found.
+- Main risk: the on-demand limit (60 TfL calls/min) is per Worker instance, and search, bus stop ids and
+  nearby cells are unbounded, so one client could miss the cache every time and exhaust the key's 500/min.
+- "Yes, fix it" → Workers Rate Limiting binding, 60 requests/min per IP per location, on on-demand endpoints;
+  429 when over, fails open (ADR-014). Checked the binding docs: per location, eventually consistent, not global.

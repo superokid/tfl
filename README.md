@@ -52,7 +52,7 @@ Phone ──► static page (free, cached; service worker opens it offline)
 
 Details and dates: [`docs/verification.md`](docs/verification.md).
 
-- **219 tests on every push** (GitHub Actions): every rule case in SPEC §7, the data layer's failure paths
+- **236 tests on every push** (GitHub Actions): every rule case in SPEC §7, the data layer's failure paths
   (TfL down, invalid body, partial failure, lease, D1 down), parsers against **real captured TfL responses**,
   the generated reference data, the free-tier bound (600 requests → ≤ 1 refresh per 30 s), and that the key
   never appears in a response, header, log or fixture. Plus typecheck, lint, bundle budget and gitleaks.

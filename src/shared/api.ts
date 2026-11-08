@@ -93,7 +93,7 @@ export function isLineBody(value: unknown): value is LineBody {
   );
 }
 
-/** What is stored in D1 and served by /api/status. */
+/** What is stored in D1 and served by /api/checks. */
 export interface Snapshot {
   version: number;
   /** When TfL was last read successfully (epoch ms). */

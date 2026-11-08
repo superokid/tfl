@@ -155,3 +155,13 @@ Sample of prompts used (Claude Code), with corrections.
   is never sent (ADR-013).
 - The feature (~690 B gzipped) took the bundle 70 B over the 80 KB total budget; asked before raising it.
 
+
+## 2026-11-08: production-readiness audit
+- "audit make sure it production ready to deploy for user". Ran every check, read the Worker, and probed
+  the live site with GETs only.
+- Found: size check over budget (80.3 / 80 KB), so CI would fail; the user said raising it is fine, so it's
+  now 90 KB. gitleaks flagged the tests' dummy key once, and 4 more test files use it; it's allowlisted now.
+  A missing `/assets/*.js` comes back as index.html with a 200 (checked live), which the service worker
+  cached for good. A handler throwing would get Cloudflare's HTML error page. The load test still hit the
+  removed `/api/status`. Fixed all of these.
+- Docs: the spec still described the dropped D1 budget counter and smoke-tested `/api/status`.

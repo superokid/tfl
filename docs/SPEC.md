@@ -55,8 +55,9 @@ inline. TfL down or invalid body → last good snapshot, `stale: true`, 10 s bac
 TfL call memoised per isolate. Edge-cached endpoints share one in-flight fetch and an in-memory limit
 (60 calls/min per instance), and serve the last good copy stale on failure.
 
-**Budget:** an atomic per-minute counter in D1 (`… RETURNING count`), reserved before a refresh.
-Above 400/min, serve stored data marked stale.
+**Budget:** the D1 lease caps refreshes; one refresh makes ≤ 40 TfL calls, and the rest are marked
+`budget` (`CANT_VERIFY`). On-demand endpoints share the per-instance limit above. The D1 per-minute
+counter was dropped to save writes ([ADR-009](adr/009-free-tier-footprint.md), migration 0002).
 
 **Key:** `app_key` sits in the URL, so TfL URLs are secret. One helper builds them; one redacts them
 before anything is logged, thrown or returned.
@@ -184,7 +185,7 @@ polls every 60 s and stops after 10 min idle.
   - fresh / recent / old snapshot
   - lease held
   - TfL down; partial failure; invalid body
-  - budget exceeded
+  - call budget or on-demand limit hit
   - limiter ≤ 6 in flight
   - D1 down
   - invalid bus route
@@ -192,8 +193,8 @@ polls every 60 s and stops after 10 min idle.
 - **CI on every push and PR:** typecheck, lint, test, build + size, gitleaks.
 - **Deploy** manually from a green `main`: `bun run deploy`, then `bun run smoke <url>`. CI never deploys
   and holds no Cloudflare credentials.
-- **Live smoke test** every 6 h in CI, and by hand after each deploy: schema check of `/api/health` and
-  `/api/status`.
+- **Live smoke test** every 6 h in CI, and by hand after each deploy: schema check of `/api/health`,
+  `/api/lines` and `/api/line/victoria`.
 
 ## 8. Secrets and history
 

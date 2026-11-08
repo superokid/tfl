@@ -98,7 +98,7 @@ export function useTitle(title: string | null) {
 export function PageHead({ colour, title, sub, children }: { colour?: string; title: string; sub?: ReactNode; children?: ReactNode }) {
   useTitle(title);
   return (
-    <div className="page-head" style={colour ? { borderLeftColor: colour } : undefined}>
+    <div className={`page-head${colour ? ' coloured' : ''}`} style={colour ? { borderLeftColor: colour } : undefined}>
       <a href="#" className="back">
         ← Home
       </a>

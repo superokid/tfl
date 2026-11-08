@@ -136,6 +136,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .tab[aria-selected='true'] { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
 .tab-summary { font-weight: 600; margin: 0.25rem 0 0.5rem; }
 .near-stations { margin: 0 0 0.5rem; }
+.near-note { margin-bottom: 0.5em; }
 
 /* Line list (TfL-style) */
 .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
@@ -177,7 +178,8 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 
 /* Detail pages */
 .detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
-.page-head { display: grid; gap: 0.35rem; border-left: 6px solid transparent; padding-left: 0.75rem; }
+.page-head { display: grid; gap: 0.35rem; }
+.page-head.coloured { border-left: 6px solid transparent; padding-left: 0.75rem; }
 .back { color: var(--accent); text-decoration: none; padding: 0.3rem 0; min-height: 2.5rem; display: inline-flex; align-items: center; justify-self: start; }
 .page-title { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
 .page-title h2 { font-size: 1.4rem; }
@@ -261,7 +263,7 @@ footer { display: grid; gap: 0.4rem; margin-top: 1.5rem; }
 
 /* Bus tab: stops near you */
 .near { display: grid; gap: 0.5rem; }
-.near-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.near-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5em; }
 .near-top h2 { font-size: 1.15rem; }
 .near-stops { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .near-stop { gap: 0.5rem; }

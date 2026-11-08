@@ -127,7 +127,7 @@ function NearNote({ where, index, near, tabLabel }: { where: Where; index: unkno
   if (where.state === 'off') return null;
   if (!near.length)
     return (
-      <p className="small muted">
+      <p className="small muted near-note">
         {where.state === 'locating' || (at && index === undefined)
           ? 'Finding stations near you…'
           : `${at && index ? `No ${tabLabel} station within ${formatDistance(NEAR_LINES.farM)}` : "Couldn't get your location"}, so every line is shown.`}

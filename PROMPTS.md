@@ -34,15 +34,6 @@ Sample of prompts used (Claude Code), with corrections.
   a train in 1 min and then nothing until 40 min must count as a long wait, even past the 30 min window.
 - "you allowed to merge each step", then "push still not allowed, only merge": merge locally, ask before push.
 
-## 2026-11-08: Phase 1, API investigation
-- "continue all the next phase, until I can test it on UI"
-  - Live check during a real Bakerloo part-suspension found ghost vehicles inside the suspended section and
-    normal-looking service at the boundary stop. Either would have raised a false "TfL says Suspended, but
-    trains are running". Rule tightened: "running normally" now needs confirmed through-services in every
-    direction.
-  - `/Line/Meta/Severity` had 3 rail descriptions the spec table missed; a fixture test now fails on any
-    unmapped one.
-
 ## 2026-11-08: Phase 3, reference data
 - Measured before building: ~84 timetables of 300–500 KB don't fit a 10 ms / 50-subrequest cron. Changed
   ADR-005 to ADR-007: the script generates a committed JSON file from the same API.
@@ -139,15 +130,6 @@ Sample of prompts used (Claude Code), with corrections.
 - Correction: deploying from a clean worktree (no `.wrangler` state) auto-created D1 in APAC with no tables,
   not `weur`. Deleted it, recreated in `weur`, pinned `database_id` in `wrangler.jsonc`, migrated, redeployed.
 
-## 2026-11-08: UI/UX review
-- "review the UI UX, make sure it very user friendly and usefull". Reviewed every screen at 390 and 320 px,
-  light and dark, on live data.
-- Found: boards of 6 trains per platform (Oxford Circus was 3 screens long), bus stop page with no letter or
-  direction, home hiding why a line is delayed, two search boxes stacked on the Bus tab, a TfL reason
-  starting lowercase, bus times wrapping at 320 px.
-- Fixed: 3 per platform with "More times"; stop letter and direction from the arrivals already fetched (no
-  extra call); TfL's reason under problem lines; one search box; page titles per screen.
-- Another session was editing the same folder, so this work moved to its own worktree.
 
 ## 2026-11-08: lines near me
 - "add a button use my current location to filte" (cut off) → asked; answer: filter rail lines near me.

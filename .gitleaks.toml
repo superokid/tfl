@@ -1,0 +1,7 @@
+# Default rules, plus the tests' deliberately fake TfL key (it tripped generic-api-key in CI).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test-only dummy key"
+regexes = ['''NOT-A-REAL-KEY''']

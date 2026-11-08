@@ -98,6 +98,9 @@ export const CLIENT = {
   /** A saved device copy older than this is not shown while the first fetch is in flight (a skeleton
    * is); it still appears if that fetch fails. Live times this old mislead more than they help. */
   maxDeviceCopyWhileLoadingMs: 5 * 60_000,
+  /** A load that failed on a network error, timeout or 5xx is retried after each of these, then left to
+   * "Try again" and the 60 s poll. Bounded: 3 extra requests at most. */
+  retryDelaysMs: [2_000, 5_000, 15_000],
 } as const;
 
 /**

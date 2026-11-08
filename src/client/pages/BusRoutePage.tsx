@@ -4,7 +4,7 @@ import { useLive, useServerNow } from '../hooks/live';
 import { href } from '../hooks/route';
 import type { useSaved } from '../hooks/saved';
 import { RouteSkeleton } from '../components/Skeletons';
-import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
+import { LoadError, PageHead, Retrying, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
 import { formatDue, severityFromSays } from '../lib/view';
 
 /**
@@ -28,6 +28,7 @@ export function BusRoutePage({ id, saved, idle }: { id: string; saved: ReturnTyp
       </PageHead>
       <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+      <Retrying retry={live.retry} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this route" />}
       {!data && live.loading && <RouteSkeleton />}
       {data && (

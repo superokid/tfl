@@ -6,6 +6,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { recall, remember, showDeviceCopyWhileLoading } from '../lib/recent';
+import { CLIENT } from '../../shared/config';
+import { retryDelayMs } from '../lib/retry';
 import { type LoadFailure, loadErrorText } from '../lib/view';
 
 export const REFRESH_MS = 60_000;
@@ -41,6 +43,8 @@ export interface Live<T> {
   source: 'live' | 'device' | null;
   error: string | null;
   loading: boolean;
+  /** Set while a failed load waits to be retried: why it failed and which retry is next. */
+  retry: { error: string; attempt: number; of: number } | null;
   reload: () => void;
 }
 
@@ -57,7 +61,8 @@ function readSaved<T>(key: string | undefined, valid: (v: unknown) => v is T): {
 /**
  * Fetches `url` now and every 60 s while the tab is visible and the user isn't idle. With `saveAs`, the
  * last good result is kept on the device and shown when offline. A copy too old to trust is held back
- * while the first fetch loads (skeleton instead) and shown only if that fetch fails.
+ * while the first fetch loads (skeleton instead) and shown only if that fetch fails. A failure a retry can
+ * fix is retried a few times (lib/retry.ts), with a "Trying again" note, before the error appears.
  */
 export function useLive<T>(
   url: string | null,
@@ -69,23 +74,29 @@ export function useLive<T>(
     // Back on a screen seen moments ago: show that result, no request.
     const now = Date.now();
     const hit = url ? recall(url, valid, now) : null;
-    if (hit) return { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false };
+    if (hit) return { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false, retry: null };
     const saved = readSaved(saveAs, valid);
     if (saved && showDeviceCopyWhileLoading(saved.savedAt, now))
-      return { data: saved.data, receivedAt: saved.savedAt, source: 'device', error: null, loading: true };
-    return { data: null, receivedAt: 0, source: null, error: null, loading: true };
+      return { data: saved.data, receivedAt: saved.savedAt, source: 'device', error: null, loading: true, retry: null };
+    return { data: null, receivedAt: 0, source: null, error: null, loading: true, retry: null };
   });
   const inFlight = useRef<AbortController | null>(null);
+  const retries = useRef(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** The current `load`, so a scheduled retry can call it. */
+  const loadRef = useRef<() => Promise<void>>(async () => {});
 
   /** `force`: the user tapped Refresh. Otherwise a result under 30 s old is reused. */
   const load = useCallback(async (force = false) => {
     if (!url) return;
+    clearTimeout(retryTimer.current);
+    if (force) retries.current = 0;
     const hit = force ? null : recall(url, valid, Date.now());
     if (hit) {
       setState((s) =>
         s.source === 'live' && s.receivedAt === hit.at
           ? s
-          : { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false },
+          : { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false, retry: null },
       );
       return;
     }
@@ -106,6 +117,7 @@ export function useLive<T>(
         throw new Error(String(failure));
       }
       const at = Date.now();
+      retries.current = 0;
       remember(url, body, at);
       if (saveAs) {
         try {
@@ -114,16 +126,26 @@ export function useLive<T>(
           // Storage full or blocked: the app works without it.
         }
       }
-      setState({ data: body, receivedAt: at, source: 'live', error: null, loading: false });
+      setState({ data: body, receivedAt: at, source: 'live', error: null, loading: false, retry: null });
     } catch {
       if (controller.signal.aborted && !timedOut) return; // superseded or unmounted
-      const message = loadErrorText(!navigator.onLine ? 'offline' : timedOut ? 'timeout' : failure);
+      const kind: LoadFailure = !navigator.onLine ? 'offline' : timedOut ? 'timeout' : failure;
+      const message = loadErrorText(kind);
+      const delay = retryDelayMs(kind, retries.current);
+      if (delay !== null) {
+        retries.current += 1;
+        retryTimer.current = setTimeout(() => void loadRef.current(), delay);
+        // Keep the skeleton (or what's shown) up while retrying; the error shows once retries run out.
+        const retry = { error: message, attempt: retries.current, of: CLIENT.retryDelaysMs.length };
+        setState((s) => ({ ...s, loading: true, retry }));
+        return;
+      }
       // A copy held back as too old while loading is still better than nothing now.
       const fallback = readSaved(saveAs, valid);
       setState((s) =>
         !s.data && fallback
-          ? { data: fallback.data, receivedAt: fallback.savedAt, source: 'device', error: message, loading: false }
-          : { ...s, source: s.data ? 'device' : null, error: message, loading: false },
+          ? { data: fallback.data, receivedAt: fallback.savedAt, source: 'device', error: message, loading: false, retry: null }
+          : { ...s, source: s.data ? 'device' : null, error: message, loading: false, retry: null },
       );
     } finally {
       clearTimeout(timer);
@@ -131,7 +153,12 @@ export function useLive<T>(
   }, [url, valid, saveAs]);
 
   useEffect(() => {
+    loadRef.current = () => load();
+  }, [load]);
+
+  useEffect(() => {
     // First load from a timer callback: no synchronous setState in the effect body.
+    retries.current = 0;
     const first = setTimeout(() => {
       setState((s) => (s.data && s.source === 'live' ? s : { ...s, loading: true }));
       void load();
@@ -150,11 +177,12 @@ export function useLive<T>(
       document.removeEventListener('visibilitychange', onBack);
       window.removeEventListener('online', onBack);
       inFlight.current?.abort();
+      clearTimeout(retryTimer.current);
     };
   }, [load, paused, poll]);
 
   const reload = useCallback(() => {
-    setState((s) => ({ ...s, loading: true }));
+    setState((s) => ({ ...s, loading: true, retry: null }));
     void load(true);
   }, [load]);
 

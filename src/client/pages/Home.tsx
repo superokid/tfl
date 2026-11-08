@@ -9,7 +9,7 @@ import type { SavedItem } from '../hooks/saved';
 import { BusTab } from '../features/buses/Buses';
 import { useIndex } from '../features/search/Search';
 import { LinesSkeleton } from '../components/Skeletons';
-import { LoadError, StaleBanner, StatusText, Updated, useTitle } from '../components/ui';
+import { LoadError, Retrying, StaleBanner, StatusText, Updated, useTitle } from '../components/ui';
 import { formatDistance, rowNote, rowReason, sortLines, stationsNear, TABS, tabOf, tabSummary, type StationNear, type Tab } from '../lib/view';
 import { useWhere, type Where } from '../hooks/where';
 
@@ -90,6 +90,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         <section className="block" aria-label={`${tabLabel} lines`}>
           <Updated age={age} stale={stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
           <StaleBanner show={stale} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+          <Retrying retry={live.retry} />
           {alerts.length > 0 && (
             <div className="alerts" role="group" aria-label="Live train alerts">
               {alerts.map((l) => (

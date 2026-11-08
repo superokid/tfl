@@ -4,7 +4,7 @@ import { useLive, useServerNow } from '../../hooks/live';
 import { href } from '../../hooks/route';
 import type { SavedItem } from '../../hooks/saved';
 import { NearStopsSkeleton } from '../../components/Skeletons';
-import { Updated } from '../../components/ui';
+import { Retrying, Updated } from '../../components/ui';
 import { formatDue } from '../../lib/view';
 import { useWhere, type Where } from '../../hooks/where';
 
@@ -56,6 +56,7 @@ function NearYou({ idle }: { idle: boolean }) {
       ) : (
         <>
           <Updated age={age} stale={!!data?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
+          <Retrying retry={live.retry} />
           {!data && live.loading && <NearStopsSkeleton />}
           {!data && !live.loading && <p className="small muted">Couldn't load nearby stops right now. Try again in a minute.</p>}
           {data && data.stops.length === 0 && <p className="small muted">No bus stops within {NEARBY.radiusM} m.</p>}

@@ -164,6 +164,8 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 - **Bus route:** TfL's status and message, then a direction toggle and every stop in order with its next
   3 buses (stop letters as on the flag); tap a stop for its board. Not checked against live buses.
 - States: loading skeleton, stale banner, device copy when offline, retry, "paused" after 10 min idle.
+  A network error, timeout or 5xx is retried 3 times (2, 5, 15 s) with a "Trying again (n of 3)" note,
+  then "Try again" is left to the user.
 - AA contrast, colour never the only signal, 320 px. One light theme whatever the browser's setting. No TfL logo; "Powered by TfL Open Data".
 
 ### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))

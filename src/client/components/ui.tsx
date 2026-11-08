@@ -53,6 +53,16 @@ export function StaleBanner({ show, deviceCopy, age, error }: { show: boolean; d
   );
 }
 
+/** Shown while a failed load is retried automatically, so a long skeleton isn't a mystery. */
+export function Retrying({ retry }: { retry: { error: string; attempt: number; of: number } | null }) {
+  if (!retry) return null;
+  return (
+    <div className="banner banner-warn" role="status">
+      {retry.error}. Trying again ({retry.attempt} of {retry.of})…
+    </div>
+  );
+}
+
 /** Copies of live data kept on this device (not saved items or settings). */
 function clearDeviceCopies() {
   try {

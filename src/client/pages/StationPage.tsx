@@ -7,7 +7,7 @@ import { href } from '../hooks/route';
 import type { useSaved } from '../hooks/saved';
 import { Board } from '../features/boards/Board';
 import { BoardsSkeleton, BusRowsSkeleton } from '../components/Skeletons';
-import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
+import { LoadError, PageHead, Retrying, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
 import { stopDetail } from '../lib/view';
 
 /** The home screen's last statuses, from this device: shows each line's status here for free. */
@@ -56,6 +56,7 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
       </PageHead>
       <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+      <Retrying retry={live.retry} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="departures" />}
       {!data && live.loading && (isBusStop ? <BusRowsSkeleton /> : <BoardsSkeleton />)}
       {data && now !== null && data.lines.length === 0 && <p className="card muted">No services predicted here right now.</p>}

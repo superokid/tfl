@@ -4,7 +4,7 @@ import { lineColour } from '../lib/lineColours';
 import { useLive, useServerNow } from '../hooks/live';
 import type { useSaved } from '../hooks/saved';
 import { LineSkeleton } from '../components/Skeletons';
-import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
+import { LoadError, PageHead, Retrying, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
 import { checkCard, evidenceText, isOverThreshold, severityFromSays } from '../lib/view';
 
 /**
@@ -25,6 +25,7 @@ export function LinePage({ id, saved, idle }: { id: string; saved: ReturnType<ty
       </PageHead>
       <Updated age={age} stale={!!line?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!line?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
+      <Retrying retry={live.retry} />
       {!line && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this line" />}
       {!line && live.loading && <LineSkeleton />}
       {line && now !== null && <LineBodyView line={line} now={now} />}

@@ -202,3 +202,9 @@ Sample of prompts used (Claude Code), with corrections.
   should show the loading skeleton instead of showing very old data".
 - A saved copy over 5 min old (`CLIENT.maxDeviceCopyWhileLoadingMs`) is no longer shown while the first fetch
   loads; the skeleton is. If that fetch fails, the old copy still appears with "Last updated …".
+
+## 2026-11-09: bounded retry
+- "if tfl isnt loading should retry, but dont retry indefinitely", then "when retry should show the UI for user".
+- A failed load (network, timeout, 5xx) is retried after 2, 5 and 15 s (`CLIENT.retryDelaysMs`), then stops at
+  the "Try again" card. 4xx, 429, bad responses and offline aren't retried. A "Trying again (n of 3)" banner shows.
+- Checked in headless Chromium against local dev with no key (503s): banner went 1 → 2 → 3 of 3, then the error card.

@@ -5,6 +5,7 @@ import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { useSaved } from './saved';
 import { Board } from './LinePage';
+import { BoardsSkeleton, BusRowsSkeleton } from './Skeletons';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
 import { stopDetail } from './view';
 
@@ -32,6 +33,7 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
     <main className="detail">
       <PageHead
         title={data?.name ?? (isBusStop ? 'Bus stop' : 'Station')}
+        pending={!data && live.loading}
         sub={
           isBusStop &&
           data &&
@@ -54,7 +56,7 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
       <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="departures" />}
-      {!data && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}
+      {!data && live.loading && (isBusStop ? <BusRowsSkeleton /> : <BoardsSkeleton />)}
       {data && now !== null && data.lines.length === 0 && <p className="card muted">No services predicted here right now.</p>}
       {data &&
         now !== null &&

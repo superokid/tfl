@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { isBusRouteBody, type RouteDirection } from '../shared/api';
 import { href, useLive, useServerNow } from './live';
 import type { useSaved } from './saved';
+import { RouteSkeleton } from './Skeletons';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
 import { formatDue, severityFromSays } from './view';
 
@@ -21,13 +22,13 @@ export function BusRoutePage({ id, saved, idle }: { id: string; saved: ReturnTyp
 
   return (
     <main className="detail">
-      <PageHead title={data ? `Bus ${data.name}` : 'Bus route'}>
+      <PageHead title={data ? `Bus ${data.name}` : 'Bus route'} pending={!data && live.loading}>
         {data && <SaveButton item={{ route, name: data.name, detail: 'Bus route' }} saved={saved.isSaved(route)} onToggle={saved.toggle} />}
       </PageHead>
       <Updated age={age} stale={!!data?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!data?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!data && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this route" />}
-      {!data && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}
+      {!data && live.loading && <RouteSkeleton />}
       {data && (
         <section className="card">
           <p className="small muted">TfL says</p>

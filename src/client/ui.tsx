@@ -1,5 +1,6 @@
 /** Small shared pieces used by every page. */
 import { Component, Fragment, type ReactNode, useEffect } from 'react';
+import { Bone } from './Skeletons';
 import type { SavedItem } from './saved';
 import { formatAge, statusTone, type Tone } from './view';
 import type { Expected } from '../shared/rules/types';
@@ -130,8 +131,21 @@ export function useTitle(title: string | null) {
   }, [title]);
 }
 
-export function PageHead({ colour, title, sub, children }: { colour?: string; title: string; sub?: ReactNode; children?: ReactNode }) {
-  useTitle(title);
+export function PageHead({
+  colour,
+  title,
+  sub,
+  pending = false,
+  children,
+}: {
+  colour?: string;
+  title: string;
+  sub?: ReactNode;
+  /** The real name is still loading: show a bone, not a generic placeholder title. */
+  pending?: boolean;
+  children?: ReactNode;
+}) {
+  useTitle(pending ? null : title);
   return (
     <div className={`page-head${colour ? ' coloured' : ''}`} style={colour ? { borderLeftColor: colour } : undefined}>
       <a href="#" className="back">
@@ -139,7 +153,16 @@ export function PageHead({ colour, title, sub, children }: { colour?: string; ti
       </a>
       <div className="page-title">
         <div className="page-name">
-          <h2>{title}</h2>
+          <h2>
+            {pending ? (
+              <>
+                <Bone />
+                <span className="visually-hidden">{title}</span>
+              </>
+            ) : (
+              title
+            )}
+          </h2>
           {sub && <p className="page-sub">{sub}</p>}
         </div>
         {children}

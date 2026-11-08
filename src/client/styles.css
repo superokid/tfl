@@ -15,6 +15,8 @@
   --warn-fg: #6b4400;
   --warn-bg: #fff4d6;
   --neutral-bg: #eef0f3;
+  --bone: #e4e8ed;
+  --shine: #f3f5f8;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.45;
@@ -37,6 +39,8 @@
     --warn-fg: #ffd27a;
     --warn-bg: #3a2c0a;
     --neutral-bg: #222830;
+    --bone: #252b33;
+    --shine: #333b46;
   }
 }
 
@@ -233,11 +237,31 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .evidence-list li.over { color: var(--closed); font-weight: 600; }
 
 .empty { text-align: center; padding: 1.5rem 1rem; justify-items: center; }
-.skeleton { background: var(--neutral-bg); border-radius: 0.75rem; animation: pulse 1.2s ease-in-out infinite; margin-bottom: 0.4rem; }
-.skeleton-row { height: 3.4rem; }
-.skeleton-card { height: 8rem; }
-@keyframes pulse { 50% { opacity: 0.5; } }
-@media (prefers-reduced-motion: reduce) { .spin, .skeleton { animation: none; } }
+/* Skeletons: real layout classes, grey bones inside, one shimmer sweeping across the page. */
+.sk { min-width: 0; animation: sk-in 0.2s ease-out 0.12s both; }
+.sk-stack .sk-body { display: grid; gap: 0.75rem; }
+.bone {
+  display: block; height: 0.9rem; max-width: 100%; border-radius: 0.3rem;
+  background: linear-gradient(90deg, var(--bone) 0%, var(--shine) 50%, var(--bone) 100%) var(--bone);
+  background-size: 200vw 100%; background-attachment: fixed; animation: shimmer 1.4s linear infinite;
+}
+.bone-round { border-radius: 50%; flex: none; }
+.sk-summary { margin: 0.35rem 0 0.6rem; }
+.sk-row { border-left-color: var(--border); }
+.sk-status { width: 100%; }
+.sk-status .bone:last-child { flex: 1 1 auto; max-width: 60%; }
+.sk-line-card { border-left-color: var(--border); }
+.sk-badge { padding: 0; }
+.bus-times .bone, .times .bone { align-self: center; }
+.sk-lines { gap: 0.35rem; }
+.sk-segmented { grid-template-columns: 1fr 1fr; }
+.sk-segmented .bone { border-radius: 0.55rem; background: var(--card); animation: none; }
+.sk .stop::before { background: var(--border); opacity: 1; }
+.sk-dot { justify-self: center; z-index: 1; }
+.page-title h2 .bone { height: 1.6rem; width: 11rem; }
+@keyframes shimmer { from { background-position: 100vw 0; } to { background-position: -100vw 0; } }
+@keyframes sk-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .spin, .bone { animation: none; } .sk { animation-duration: 0s; } }
 
 footer { display: grid; gap: 0.4rem; margin-top: 1.5rem; }
 

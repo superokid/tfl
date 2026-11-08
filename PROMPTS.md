@@ -118,7 +118,6 @@ Sample of prompts used (Claude Code), with corrections.
 - Screenshots found the "›" wrapping onto its own line and two "updated" rows on the Bus tab (it was also
   polling rail status it didn't show). Both fixed; the search box moved above the nearby list.
 
-
 ## 2026-11-08: slow APIs
 - "review & fix some api are very slow". Timed every endpoint cold on `bun run dev`. TfL is noisy, 0.4–3.7 s
   per call; `/StopPoint` and `/Line` arrivals are no different, and `?detail=true` is 3–4 s.
@@ -130,13 +129,11 @@ Sample of prompts used (Claude Code), with corrections.
 - Correction: deploying from a clean worktree (no `.wrangler` state) auto-created D1 in APAC with no tables,
   not `weur`. Deleted it, recreated in `weur`, pinned `database_id` in `wrangler.jsonc`, migrated, redeployed.
 
-
 ## 2026-11-08: lines near me
 - "add a button use my current location to filte" (cut off) → asked; answer: filter rail lines near me.
 - Checked live: route sequences give every stop's lat/lon, so the phone filters on its own; the position
   is never sent (ADR-013).
 - The feature (~690 B gzipped) took the bundle 70 B over the 80 KB total budget; asked before raising it.
-
 
 ## 2026-11-08: production-readiness audit
 - "audit make sure it production ready to deploy for user". Ran every check, read the Worker, and probed
@@ -173,3 +170,9 @@ Sample of prompts used (Claude Code), with corrections.
   validated, and a failed stop search said "Searching…" forever. Station and bus pages now keep a device copy.
 - Checked in headless Chromium over CDP (the browser tools were down): API blocked, corrupt device copy,
   forced render crash and recovery.
+
+## 2026-11-08: loading UI and skeletons
+- "make the UI for loading better, and better skeleton". Replaced the grey blocks with skeletons built from
+  each page's real layout classes (line rows, status and check cards, station boards, bus rows, route timeline,
+  nearby stops), a page-wide shimmer, a 120 ms fade-in so fast loads don't flash, and a bone for the page title.
+  One `role="status"` label per skeleton for screen readers. Checked by screenshot with `/api/*` held open.

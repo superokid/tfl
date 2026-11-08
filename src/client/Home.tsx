@@ -7,6 +7,7 @@ import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
 import { BusTab } from './Buses';
 import { useIndex } from './Search';
+import { LinesSkeleton } from './Skeletons';
 import { LoadError, StaleBanner, StatusText, Updated, useTitle } from './ui';
 import { formatDistance, rowNote, rowReason, sortLines, stationsNear, TABS, tabOf, tabSummary, type StationNear, type Tab } from './view';
 import { useWhere, type Where } from './where';
@@ -94,7 +95,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
         <BusTab saved={saved} idle={idle} />
       ) : !live.data ? (
         live.loading ? (
-          <Skeleton />
+          <LinesSkeleton />
         ) : (
           <LoadError error={live.error} onRetry={live.reload} what="line status" />
         )
@@ -161,15 +162,5 @@ function LineRow({ line, verdict }: { line: LineStatus; verdict: VerdictKind | u
         ›
       </span>
     </a>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div aria-hidden="true">
-      {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="skeleton skeleton-row" />
-      ))}
-    </div>
   );
 }

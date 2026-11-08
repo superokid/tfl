@@ -6,6 +6,7 @@ import { lineColour } from './lineColours';
 import { href, useLive, useServerNow } from './live';
 import type { useSaved } from './saved';
 import { Times, upcoming } from './Times';
+import { LineSkeleton } from './Skeletons';
 import { LoadError, PageHead, SaveButton, StaleBanner, StatusText, Updated } from './ui';
 import { checkCard, evidenceText, isOverThreshold, severityFromSays } from './view';
 
@@ -22,13 +23,13 @@ export function LinePage({ id, saved, idle }: { id: string; saved: ReturnType<ty
 
   return (
     <main className="detail">
-      <PageHead colour={lineColour(id)} title={line?.lineName ?? 'Line'}>
+      <PageHead colour={lineColour(id)} title={line?.lineName ?? 'Line'} pending={!line && live.loading}>
         {line && <SaveButton item={{ route, name: line.lineName }} saved={saved.isSaved(route)} onToggle={saved.toggle} />}
       </PageHead>
       <Updated age={age} stale={!!line?.stale || live.source === 'device'} loading={live.loading} paused={idle} onRefresh={live.reload} />
       <StaleBanner show={!!line?.stale || live.source === 'device'} deviceCopy={live.source === 'device'} age={age ?? 0} error={live.error} />
       {!line && !live.loading && <LoadError error={live.error} onRetry={live.reload} what="this line" />}
-      {!line && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}
+      {!line && live.loading && <LineSkeleton />}
       {line && now !== null && <LineBodyView line={line} now={now} />}
     </main>
   );

@@ -2,6 +2,7 @@ import { type BusTimes, isNearbyBody, type NearbyStop } from '../shared/api';
 import { DISPLAY, NEARBY } from '../shared/config';
 import { href, useLive, useServerNow } from './live';
 import type { SavedItem } from './saved';
+import { NearStopsSkeleton } from './Skeletons';
 import { Updated } from './ui';
 import { formatDue } from './view';
 import { useWhere, type Where } from './where';
@@ -54,7 +55,7 @@ function NearYou({ idle }: { idle: boolean }) {
       ) : (
         <>
           <Updated age={age} stale={!!data?.stale} loading={live.loading} paused={idle} onRefresh={live.reload} />
-          {!data && live.loading && <div className="skeleton skeleton-card" aria-hidden="true" />}
+          {!data && live.loading && <NearStopsSkeleton />}
           {!data && !live.loading && <p className="small muted">Couldn't load nearby stops right now. Try again in a minute.</p>}
           {data && data.stops.length === 0 && <p className="small muted">No bus stops within {NEARBY.radiusM} m.</p>}
           {data && now !== null && (

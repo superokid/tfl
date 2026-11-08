@@ -196,3 +196,9 @@ Sample of prompts used (Claude Code), with corrections.
   Checked in headless Chromium: home → line → home → tab return → line made 0 extra requests; Refresh made 1.
 - Per-request invocation logs turned off (account-wide Workers Logs allowance); errors are still logged. Query
   strings redacted, since `/api/nearby` URLs carried the user's rounded position into the logs.
+
+## 2026-11-08: old device copy while loading
+- "when data is 1hour ago, and the detail is still loading, improve this ux. if the last data is too long,
+  should show the loading skeleton instead of showing very old data".
+- A saved copy over 5 min old (`CLIENT.maxDeviceCopyWhileLoadingMs`) is no longer shown while the first fetch
+  loads; the skeleton is. If that fetch fails, the old copy still appears with "Last updated …".

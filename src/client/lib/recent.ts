@@ -22,3 +22,8 @@ export function recall<T>(url: string, valid: (v: unknown) => v is T, now: numbe
 export function clearRecent(): void {
   recent.clear();
 }
+
+/** Whether a device copy saved at `savedAt` is fresh enough to show while the first fetch loads. */
+export function showDeviceCopyWhileLoading(savedAt: number, now: number): boolean {
+  return now >= savedAt && now - savedAt < CLIENT.maxDeviceCopyWhileLoadingMs;
+}

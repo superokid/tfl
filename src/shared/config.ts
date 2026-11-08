@@ -95,6 +95,9 @@ export const CLIENT = {
   /** Don't ask for the same URL again sooner than this, except on a tap of Refresh: the server's
    * snapshots and edge caches are fresh for 30 s, so an earlier request returns the same data. */
   minRefetchGapMs: 30_000,
+  /** A saved device copy older than this is not shown while the first fetch is in flight (a skeleton
+   * is); it still appears if that fetch fails. Live times this old mislead more than they help. */
+  maxDeviceCopyWhileLoadingMs: 5 * 60_000,
 } as const;
 
 /**

@@ -5,7 +5,7 @@
  * taps Refresh (see lib/recent.ts).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { recall, remember } from '../lib/recent';
+import { recall, remember, showDeviceCopyWhileLoading } from '../lib/recent';
 import { type LoadFailure, loadErrorText } from '../lib/view';
 
 export const REFRESH_MS = 60_000;
@@ -56,7 +56,8 @@ function readSaved<T>(key: string | undefined, valid: (v: unknown) => v is T): {
 
 /**
  * Fetches `url` now and every 60 s while the tab is visible and the user isn't idle. With `saveAs`, the
- * last good result is kept on the device and shown when offline.
+ * last good result is kept on the device and shown when offline. A copy too old to trust is held back
+ * while the first fetch loads (skeleton instead) and shown only if that fetch fails.
  */
 export function useLive<T>(
   url: string | null,
@@ -66,12 +67,13 @@ export function useLive<T>(
   const { paused = false, saveAs, poll = true } = opts;
   const [state, setState] = useState<Omit<Live<T>, 'reload'>>(() => {
     // Back on a screen seen moments ago: show that result, no request.
-    const hit = url ? recall(url, valid, Date.now()) : null;
+    const now = Date.now();
+    const hit = url ? recall(url, valid, now) : null;
     if (hit) return { data: hit.data, receivedAt: hit.at, source: 'live', error: null, loading: false };
     const saved = readSaved(saveAs, valid);
-    return saved
-      ? { data: saved.data, receivedAt: saved.savedAt, source: 'device', error: null, loading: true }
-      : { data: null, receivedAt: 0, source: null, error: null, loading: true };
+    if (saved && showDeviceCopyWhileLoading(saved.savedAt, now))
+      return { data: saved.data, receivedAt: saved.savedAt, source: 'device', error: null, loading: true };
+    return { data: null, receivedAt: 0, source: null, error: null, loading: true };
   });
   const inFlight = useRef<AbortController | null>(null);
 
@@ -116,7 +118,13 @@ export function useLive<T>(
     } catch {
       if (controller.signal.aborted && !timedOut) return; // superseded or unmounted
       const message = loadErrorText(!navigator.onLine ? 'offline' : timedOut ? 'timeout' : failure);
-      setState((s) => ({ ...s, source: s.data ? 'device' : null, error: message, loading: false }));
+      // A copy held back as too old while loading is still better than nothing now.
+      const fallback = readSaved(saveAs, valid);
+      setState((s) =>
+        !s.data && fallback
+          ? { data: fallback.data, receivedAt: fallback.savedAt, source: 'device', error: message, loading: false }
+          : { ...s, source: s.data ? 'device' : null, error: message, loading: false },
+      );
     } finally {
       clearTimeout(timer);
     }

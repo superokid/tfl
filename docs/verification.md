@@ -2,6 +2,19 @@
 
 What was checked against live TfL data, and what it changed. Newest first.
 
+## 2026-11-09, Elizabeth line and Overground timetables from the journey planner (ADR-018)
+- `bun run reference`: 11,335 calls, 45 min. All 7 lines got timetables (Tue 17, Fri 13, Sat 14, Sun 15 Nov;
+  Windrush used Sat 21 for one day). Liberty and Mildmay at Willesden Junction have one direction each.
+- First run planned only to the next and the shared station: Elizabeth eastbound at Ealing came out every
+  15 min against 4–6 live (trains skip Acton Main Line). Adding each route's end fixed it (5 min, live 3–9).
+- Monday 09:35, every check station × direction against live arrivals: Elizabeth, Lioness, Weaver,
+  Windrush at Canada Water and Mildmay inbound agree. Mildmay westbound (Severe Delays) and Suffragette
+  (Part Closure) were sparser live, as TfL said. Windrush at Dalston Junction plans every 3 min but live
+  shows 6–9 (its feed lists many trains at 0 min; trains starting there may be missing): a known limit,
+  softened by the 2-station rule.
+- Dev server: Elizabeth, Liberty, Lioness, Mildmay, Weaver, Windrush "match" with real timetables (no
+  fallback); Suffragette "not enough data" (part closed).
+
 ## 2026-11-09, home checks the open tab (ADR-017), dev server against live TfL (Mon 08:06)
 - `/api/checks/:tab`: Tube 1.7 KB, 6.9 s cold, then 28 ms from D1; Elizabeth 0.7 s; Overground 5.2 s;
   DLR 0.5 s; Tram 0.4 s. Each returned only its own lines; `/api/checks/bus` → 404; `/api/lines` has no verdicts.

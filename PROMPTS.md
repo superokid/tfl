@@ -254,3 +254,11 @@ Sample of prompts used (Claude Code), with corrections.
 - "is it possible to reduce it more? like only when user open the right tab?" → "ok fix them all".
 - `/api/checks/:tab` checks the open tab's lines (Tube ≤ 24 TfL calls), one shared snapshot per tab. Rows
   say "Live trains not checked" when they weren't, instead of showing nothing (ADR-017).
+
+## 2026-11-09: Elizabeth line and Overground timetables
+- Reviewer: "Elizabeth line and Overground can never be flagged". "so does Elizabeth line and Overground
+  fixable?" → "ok fix them all".
+- TfL's `/Timetable` is 404 for them; the journey planner has their planned trains, 3 per call.
+- Checked before relying on it: it found every tram departure in TfL's Sunday timetable; on the Elizabeth
+  line, planning only to the next station missed 4 trains an hour that run through West Ealing, so each
+  check station plans to the next station and the furthest station all routes share (ADR-018).

@@ -79,8 +79,9 @@ Claude Code; every change was reviewed in conversation and checked against live 
 
 - **Buses** have stops near you, stop search, route status and live times, but aren't checked against live buses (no comparison
   rules for buses).
-- **Elizabeth line and Overground are never flagged:** TfL has no timetables for them (404), so there's no
-  "usual" gap. They can match or be "Can't verify". The **Cable Car** has no predictions at all: status only.
+- **Elizabeth line and Overground timetables come from TfL's journey planner** (TfL's timetable is 404 for
+  them, ADR-018), sampled on one week's days: engineering works on a sampled day can skew them until the next
+  `bun run reference`. The **Cable Car** has no predictions at all: status only.
 - **DLR** predictions reach only 2–13 min ahead, so it's mostly "Can't verify".
 - **Thresholds** were tuned on one day (a Sunday). The Tram flags seen were TfL's own uneven timetable
   (paired trams, the last tram's 15 min gap); each gap is now judged by the timetable where it falls (ADR-016).

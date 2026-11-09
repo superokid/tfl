@@ -4,32 +4,40 @@ import { isLineBody, type LineBody } from '../../src/shared/api';
 import { LIVE } from '../../src/shared/config';
 import { RAIL_REFERENCE } from '../../src/shared/reference/load';
 import { MemoryJsonCache } from '../../src/worker/bus';
-import { handleLine, type LineDeps } from '../../src/worker/line';
+import type { StatusInput } from '../../src/shared/rules/types';
+import { handleLine, type LineDeps, type SharedStatuses } from '../../src/worker/line';
 import { CallLimiter } from '../../src/worker/station';
 import { createTflClient } from '../../src/worker/tfl/client';
 
 const fixture = (name: string) => JSON.parse(readFileSync(`test/fixtures/${name}.json`, 'utf8')).body;
 const NOW = Date.parse('2026-11-08T12:12:00Z');
 
-function fakeTfl(down = false) {
+/** `status-down`: only TfL's status call fails (arrivals still answer). */
+function fakeTfl(down: boolean | 'status-down' = false) {
   const seen: string[] = [];
   const fetchImpl = (async (input: RequestInfo | URL) => {
     const url = new URL(String(input));
     seen.push(url.pathname);
-    if (down) return new Response('{}', { status: 503 });
+    if (down === true || (down === 'status-down' && url.pathname.endsWith('/Status'))) return new Response('{}', { status: 503 });
     const name = url.pathname.endsWith('/Status') ? 'status-rail' : 'arr-victoria-oxford-circus';
     return new Response(JSON.stringify(fixture(name)));
   }) as typeof fetch;
   return { seen, client: () => createTflClient('NOT-A-REAL-KEY-NOT-A-REAL-KEY', fetchImpl) };
 }
 
-function setup(cache = new MemoryJsonCache()) {
+const SEVERE: StatusInput = { description: 'Severe Delays', validityPeriods: [], affectedStopIds: [], reason: 'Victoria line: severe delays.' };
+
+/** The home screen's stored statuses, as the line screen sees them. */
+const shared = (checkedAt: number): (() => Promise<SharedStatuses | null>) => async () => ({ checkedAt, statuses: { victoria: [SEVERE] } });
+
+function setup(cache = new MemoryJsonCache(), sharedStatuses: () => Promise<SharedStatuses | null> = async () => null) {
   const background: Promise<unknown>[] = [];
-  const deps = (tfl: ReturnType<typeof fakeTfl>, now: number): LineDeps => ({
+  const deps = (tfl: ReturnType<typeof fakeTfl>, now: number, limiter = new CallLimiter(LIVE.stationCallsPerMinute)): LineDeps => ({
     lineId: 'victoria',
     reference: RAIL_REFERENCE,
     cache,
-    limiter: new CallLimiter(LIVE.stationCallsPerMinute),
+    limiter,
+    sharedStatuses,
     tfl: tfl.client,
     now,
     waitUntil: (p) => void background.push(p),
@@ -107,5 +115,49 @@ describe('/api/line/:id', () => {
     expect(b.stale).toBe(true);
     const empty = setup();
     expect((await handleLine(empty.deps(fakeTfl(true), NOW))).status).toBe(503);
+  });
+
+  describe("status from the home screen's shared snapshot", () => {
+    it('recent enough: no status call, only the 2 arrivals calls', async () => {
+      const { deps } = setup(undefined, shared(NOW - LIVE.freshMs));
+      const tfl = fakeTfl();
+      const b = await body(await handleLine(deps(tfl, NOW)));
+      expect(tfl.seen.filter((p) => p.endsWith('/Status'))).toHaveLength(0);
+      expect(tfl.seen.filter((p) => p.includes('/Arrivals/'))).toHaveLength(2);
+      expect(b.messages).toEqual(['Severe delays.']);
+    });
+
+    it('TfL status call failing on a first visit: still answers from the shared statuses', async () => {
+      const { deps } = setup(undefined, shared(NOW));
+      const res = await handleLine(deps(fakeTfl('status-down'), NOW));
+      expect(res.status).toBe(200);
+      expect((await body(res)).stale).toBe(false);
+    });
+
+    it('older than the revalidate window: calls TfL for the status instead', async () => {
+      const { deps } = setup(undefined, shared(NOW - LIVE.staleWhileRevalidateMs));
+      const tfl = fakeTfl();
+      const b = await body(await handleLine(deps(tfl, NOW)));
+      expect(tfl.seen).toContain('/Line/victoria/Status');
+      expect(b.messages).not.toContain('Severe delays.');
+    });
+
+    it('none stored, or the store failing: calls TfL for the status instead', async () => {
+      for (const missing of [async () => null, () => Promise.reject(new Error('D1 down'))]) {
+        const { deps } = setup(undefined, missing);
+        const tfl = fakeTfl();
+        expect((await handleLine(deps(tfl, NOW))).status).toBe(200);
+        expect(tfl.seen).toContain('/Line/victoria/Status');
+      }
+    });
+
+    it('takes only the calls it makes from the per-instance limit', async () => {
+      const withShared = setup(undefined, shared(NOW));
+      expect((await handleLine(withShared.deps(fakeTfl(), NOW, new CallLimiter(2)))).status).toBe(200);
+      const without = setup();
+      const tfl = fakeTfl();
+      expect((await handleLine(without.deps(tfl, NOW, new CallLimiter(2)))).status).toBe(503);
+      expect(tfl.seen.filter((p) => p.endsWith('/Status'))).toHaveLength(0);
+    });
   });
 });

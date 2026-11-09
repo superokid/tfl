@@ -1,7 +1,8 @@
 /**
  * Builders for what each screen needs (ADR-011: fetch what the user asked for, nothing more):
  * - buildLinesSnapshot: TfL statuses for every rail line (home screen), 1–2 TfL calls.
- * - buildLineReport: one line's live check + next trains (line screen), 1 + its check stops.
+ * - buildLineReport: one line's live check + next trains (line screen): its check stops, plus 1 for the
+ *   status unless the home screen's stored statuses are recent enough.
  * - buildSnapshot: every line's live check (the "Check all lines" button), ~42 calls.
  * Each throws TflError only when the status call fails; arrivals failures degrade the affected line only.
  * Status and arrivals calls go out together: TfL often takes 1–3 s per call, so chaining them doubled
@@ -115,23 +116,28 @@ export async function buildLinesSnapshot(tfl: TflClient, reference: ReferenceFil
       checkable: !ref.statusOnly,
     };
   });
-  return { version: LINES_VERSION, checkedAt: now, referenceGeneratedAt: reference.generatedAt, lines };
+  const kept = Object.fromEntries(reference.lines.map((ref) => [ref.lineId, statuses.get(ref.lineId) ?? []]));
+  return { version: LINES_VERSION, checkedAt: now, referenceGeneratedAt: reference.generatedAt, lines, statuses: kept };
 }
 
-/** Line screen: one line's status, live check and next trains. */
+/**
+ * Line screen: one line's status, live check and next trains. `knownStatuses` gives the line's statuses
+ * when they are already at hand (null: fetch them from TfL); it is looked up alongside the arrivals calls.
+ */
 export async function buildLineReport(
   tfl: TflClient,
   reference: ReferenceFile,
   lineId: string,
   now: number,
+  knownStatuses: () => Promise<StatusInput[] | null> = async () => null,
 ): Promise<LineReport | null> {
   const ref = reference.lines.find((l) => l.lineId === lineId);
   if (!ref) return null;
   const [statuses, arrivals] = await Promise.all([
-    fetchStatuses(tfl, `/Line/${ref.lineId}/Status`),
+    knownStatuses().then(async (known) => known ?? (await fetchStatuses(tfl, `/Line/${ref.lineId}/Status`)).get(ref.lineId) ?? []),
     ref.statusOnly ? new Map() : fetchArrivals(tfl, reference, [ref]),
   ]);
-  return report(ref, statuses.get(ref.lineId) ?? [], arrivals, now);
+  return report(ref, statuses, arrivals, now);
 }
 
 /** "Check all lines": every line's live check (the original full comparison). */

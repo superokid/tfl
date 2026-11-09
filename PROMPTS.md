@@ -208,3 +208,11 @@ Sample of prompts used (Claude Code), with corrections.
 - A failed load (network, timeout, 5xx) is retried after 2, 5 and 15 s (`CLIENT.retryDelaysMs`), then stops at
   the "Try again" card. 4xx, 429, bad responses and offline aren't retried. A "Trying again (n of 3)" banner shows.
 - Checked in headless Chromium against local dev with no key (503s): banner went 1 → 2 → 3 of 3, then the error card.
+
+## 2026-11-09: fewer TfL calls per line
+- "the app got rate limited, just on first user visit", then "I got 503 on api/line/xxx", "is it on every
+  deploy it hit all the tfl?" (no: deploys make no TfL calls), "can we reduce the call. why a line cost 3 tfl".
+- The 503 is a failed TfL status call with nothing cached yet; TfL and every line answered fine afterwards.
+  The cause couldn't be confirmed from logs (log query not permitted in the session).
+- ADR-015: the line screen reuses the statuses in the home screen's `lines` snapshot when < 90 s old, so a
+  line costs 2 calls, and a status failure no longer 503s it. Whole-line arrivals (2 → 1) left unproven.

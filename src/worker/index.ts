@@ -7,7 +7,7 @@ import { json } from './http';
 import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
 import { handleLine } from './line';
 import { handleNearby } from './nearby';
-import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore } from './status';
+import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore, sharedLineStatuses } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
 
@@ -90,14 +90,20 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     if (!env.TFL_APP_KEY) {
       return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
+    const tfl = () => createTflClient(env.TFL_APP_KEY);
+    const now = Date.now();
+    const waitUntil = (p: Promise<unknown>) => ctx.waitUntil(p);
     return handleLine({
       lineId: lineMatch[1]!,
       reference: RAIL_REFERENCE,
       cache: new EdgeJsonCache(),
       limiter: onDemandLimiter,
-      tfl: () => createTflClient(env.TFL_APP_KEY),
-      now: Date.now(),
-      waitUntil: (p) => ctx.waitUntil(p),
+      // Read only when the line is checked (not on a cache hit): 1 D1 read, plus the lease if due.
+      sharedStatuses: () =>
+        sharedLineStatuses({ store: new D1Store<LinesSnapshot>(env.DB, 'lines', LINES_VERSION), tfl, reference: RAIL_REFERENCE, now, waitUntil }),
+      tfl,
+      now,
+      waitUntil,
     });
   }
 

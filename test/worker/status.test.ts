@@ -7,7 +7,7 @@ import { CallLimiter } from '../../src/worker/station';
 import { LIVE } from '../../src/shared/config';
 import { RAIL_REFERENCE } from '../../src/shared/reference/load';
 import { buildSnapshot } from '../../src/worker/refresh';
-import { handleLines, handleStatus, handleStatusWithoutStore, plannedCalls, resetMemoForTests, type StatusDeps } from '../../src/worker/status';
+import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore, plannedCalls, resetMemoForTests, sharedLineStatuses, type StatusDeps } from '../../src/worker/status';
 import { MemoryStore } from '../../src/worker/store';
 import { createTflClient } from '../../src/worker/tfl/client';
 
@@ -250,6 +250,25 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     expect(lines.find((l) => l.lineId === 'bakerloo')).toMatchObject({ severity: 'PARTIAL', tflSays: 'Severe Delays, Part Suspended' });
     expect(lines.find((l) => l.lineId === 'victoria')?.severity).toBe('NORMAL');
     expect(lines.find((l) => l.lineId === 'london-cable-car')?.checkable).toBe(false);
+    // TfL's raw statuses are kept for the line screen, but never sent to the browser.
+    expect(store.snapshot?.statuses.bakerloo?.length).toBeGreaterThan(0);
+    expect(b).not.toHaveProperty('statuses');
+    resetMemoForTests();
+    expect(await (await handleLinesWithoutStore(fakeTfl().client, RAIL_REFERENCE, NOW)).json()).not.toHaveProperty('statuses');
+  });
+
+  it("line screen's statuses: the home screen's snapshot, refreshed the same way", async () => {
+    const store = new MemoryStore<LinesSnapshot>(LINES_VERSION);
+    const tfl = fakeTfl();
+    const d = { store, tfl: tfl.client, reference: RAIL_REFERENCE, now: NOW, waitUntil: () => {} };
+    const first = await sharedLineStatuses(d);
+    expect(first?.checkedAt).toBe(NOW);
+    expect(first?.statuses.victoria).toBeDefined();
+    const calls = tfl.seen.length;
+    expect(calls).toBeGreaterThan(0);
+    expect((await sharedLineStatuses({ ...d, now: NOW + 5_000 }))?.checkedAt).toBe(NOW);
+    expect(tfl.seen).toHaveLength(calls);
+    expect(await sharedLineStatuses({ ...d, store: new MemoryStore<LinesSnapshot>(LINES_VERSION), tfl: fakeTfl('down').client })).toBeNull();
   });
 
   it('home screen shows a recent check-all result, never an old one', async () => {
@@ -265,7 +284,7 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     const tfl = fakeTfl();
     const cache = new MemoryJsonCache();
     const limiter = new CallLimiter(60);
-    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache, limiter, tfl: tfl.client, now: NOW, waitUntil: () => {} };
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache, limiter, sharedStatuses: async () => null, tfl: tfl.client, now: NOW, waitUntil: () => {} };
     const results = await Promise.all(Array.from({ length: 5 }, () => handleLine(d)));
     const b: unknown = await results[0]!.json();
     expect(isLineBody(b)).toBe(true);
@@ -278,9 +297,10 @@ describe('fetch only what the screen needs (ADR-011)', () => {
 
   it('line screen and check-all: arrivals calls go out with the status call, not after it', async () => {
     const line = fakeTfl();
-    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache: new MemoryJsonCache(), limiter: new CallLimiter(60), tfl: line.client, now: NOW, waitUntil: () => {} };
+    const d = { lineId: 'victoria', reference: RAIL_REFERENCE, cache: new MemoryJsonCache(), limiter: new CallLimiter(60), sharedStatuses: async () => null, tfl: line.client, now: NOW, waitUntil: () => {} };
     await handleLine(d);
-    expect(line.arrivalsDuringStatus).toBe(2);
+    // No shared statuses: the status call is sent after that lookup, still alongside both arrivals calls.
+    expect(line.maxInFlight).toBe(3);
 
     const all = fakeTfl();
     await handleStatus(deps(new MemoryStore<Snapshot>(), all).d);

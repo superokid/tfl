@@ -11,7 +11,7 @@ user request". Bus users had nothing to use.
 | Screen | Endpoint | TfL calls | Cache |
 |---|---|---|---|
 | Home: status per mode | `/api/lines` | 1–2 | D1 snapshot `lines` (outage fallback) |
-| Line: live check + next trains | `/api/line/:id` | 1 + its check stops | edge 30 s, shared in-flight |
+| Line: live check + next trains | `/api/line/:id` | its check stops; status from `lines` ([ADR-015](015-line-status-from-shared-snapshot.md)) | edge 30 s, shared in-flight |
 | Full check (no UI button) | `/api/checks` | ~42 | D1 snapshot `checks`; home shows its verdicts for 10 min |
 | Station or bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route: status + next buses at every stop | `/api/bus/:route` | 2 (+2 for stop order, cached a day) | edge 30 s, shared in-flight |

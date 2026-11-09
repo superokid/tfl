@@ -33,7 +33,7 @@ Full rules: [`docs/SPEC.md`](docs/SPEC.md) §5. Every design decision has an ADR
 Phone ──► static page (free, cached; service worker opens it offline)
      └──► Worker, one endpoint per screen, fetched when the screen is opened (ADR-011):
             /api/lines          home: statuses ──► D1 snapshot (≤ 30 s) ──► TfL (1–2 calls), one refresher
-            /api/line/:id       one line's check + next trains ──► edge cache 30 s (served ≤ 90 s old, refreshed behind) ──► TfL (3 calls)
+            /api/line/:id       one line's check + next trains ──► edge cache 30 s (served ≤ 90 s old, refreshed behind) ──► TfL (2 calls; status from the lines snapshot)
             /api/checks         every line's check, on request only; no button in the app (~42 calls)
             /api/station/:id    any station or bus stop ──► edge 30 s ──► TfL (1–4 calls)
             /api/bus/:route     status + next buses at every stop ──► edge 30 s ──► TfL (2 calls)

@@ -21,7 +21,6 @@ interface Serve<S extends Versioned> {
   now: number;
   waitUntil: (p: Promise<unknown>) => void;
   build: (previous: S | null) => Promise<S>;
-  respond: (snapshot: S, stale: boolean) => Promise<Response> | Response;
 }
 
 const unavailable = () =>
@@ -45,27 +44,33 @@ async function refresh<S extends Versioned>(s: Serve<S>, previous: S | null): Pr
   return snapshot;
 }
 
-async function serve<S extends Versioned>(s: Serve<S>): Promise<Response> {
+/** The snapshot to serve, refreshing it if due (stale-while-revalidate, one refresher via the lease). */
+async function obtain<S extends Versioned>(s: Serve<S>): Promise<{ snapshot: S; stale: boolean } | null> {
   const { store, now } = s;
   const { snapshot, failedAt } = await store.read();
   const age = snapshot ? now - snapshot.checkedAt : Infinity;
   const lastFailure = snapshot && failedAt !== null && failedAt >= snapshot.checkedAt ? failedAt : null;
   const failing = lastFailure !== null;
 
-  if (snapshot && age < LIVE.freshMs) return s.respond(snapshot, failing);
+  if (snapshot && age < LIVE.freshMs) return { snapshot, stale: failing };
   // TfL just failed: don't retry on every request while it's down.
-  if (snapshot && lastFailure !== null && now - lastFailure < LIVE.failureBackoffMs) return s.respond(snapshot, true);
+  if (snapshot && lastFailure !== null && now - lastFailure < LIVE.failureBackoffMs) return { snapshot, stale: true };
 
   if (snapshot && age < LIVE.staleWhileRevalidateMs) {
     if (await store.tryLease(now, LIVE.leaseMs)) s.waitUntil(refresh(s, snapshot));
-    return s.respond(snapshot, failing);
+    return { snapshot, stale: failing };
   }
 
   if (await store.tryLease(now, LIVE.leaseMs)) {
     const fresh = await refresh(s, snapshot);
-    if (fresh) return s.respond(fresh, false);
+    if (fresh) return { snapshot: fresh, stale: false };
   }
-  return snapshot ? s.respond(snapshot, true) : unavailable();
+  return snapshot ? { snapshot, stale: true } : null;
+}
+
+async function serve<S extends Versioned>(s: Serve<S>, respond: (snapshot: S, stale: boolean) => Promise<Response> | Response): Promise<Response> {
+  const got = await obtain(s);
+  return got ? respond(got.snapshot, got.stale) : unavailable();
 }
 
 export interface StatusDeps {
@@ -95,34 +100,45 @@ export function summarise(snapshot: Snapshot | null, now: number): CheckSummary 
   };
 }
 
+/** What the browser gets: everything but TfL's raw statuses (the line screen's, server side only). */
+function linesBody({ statuses: _, ...snapshot }: LinesSnapshot, now: number, stale: boolean, checks: CheckSummary | null): LinesBody {
+  return { ...snapshot, serverNow: now, stale, checks };
+}
+
 async function respondLines(snapshot: LinesSnapshot, deps: LinesDeps, checksRead: Promise<Snapshot | null>, stale: boolean): Promise<Response> {
-  const checks = summarise(await checksRead, deps.now);
-  const body: LinesBody = { ...snapshot, serverNow: deps.now, stale, checks };
+  const body = linesBody(snapshot, deps.now, stale, summarise(await checksRead, deps.now));
   return json(body, { headers: { 'Cache-Control': `public, max-age=${maxAge(snapshot.checkedAt, deps.now)}` } });
 }
 
 /** GET /api/checks: every line's live check. Only the "Check all lines" button calls this. */
 export function handleStatus(deps: StatusDeps): Promise<Response> {
-  return serve<Snapshot>({
-    store: deps.store,
-    now: deps.now,
-    waitUntil: deps.waitUntil,
-    build: (prev) => buildSnapshot(deps.tfl(), deps.reference, deps.now, prev),
-    respond: (s, stale) => respondChecks(s, deps.now, stale),
-  });
+  return serve<Snapshot>(
+    { store: deps.store, now: deps.now, waitUntil: deps.waitUntil, build: (prev) => buildSnapshot(deps.tfl(), deps.reference, deps.now, prev) },
+    (s, stale) => respondChecks(s, deps.now, stale),
+  );
 }
 
 /** GET /api/lines: TfL statuses for the home screen, plus recent check-all verdicts if any. */
 export function handleLines(deps: LinesDeps): Promise<Response> {
   // Read alongside the lines snapshot, not after it: one D1 round trip instead of two.
   const checksRead = deps.checks ? deps.checks.read().then((r) => r.snapshot, () => null) : Promise.resolve(null);
-  return serve<LinesSnapshot>({
-    store: deps.store,
-    now: deps.now,
-    waitUntil: deps.waitUntil,
-    build: () => buildLinesSnapshot(deps.tfl(), deps.reference, deps.now),
-    respond: (s, stale) => respondLines(s, deps, checksRead, stale),
-  });
+  return serve<LinesSnapshot>(linesServe(deps), (s, stale) => respondLines(s, deps, checksRead, stale));
+}
+
+const linesServe = (deps: Omit<LinesDeps, 'checks'>): Serve<LinesSnapshot> => ({
+  store: deps.store,
+  now: deps.now,
+  waitUntil: deps.waitUntil,
+  build: () => buildLinesSnapshot(deps.tfl(), deps.reference, deps.now),
+});
+
+/**
+ * The line screen's statuses: the home screen's snapshot, read and refreshed exactly as /api/lines does,
+ * so opening a line costs no status call of its own. Null if there is none and TfL can't be reached.
+ */
+export async function sharedLineStatuses(deps: Omit<LinesDeps, 'checks'>): Promise<Pick<LinesSnapshot, 'checkedAt' | 'statuses'> | null> {
+  const got = await obtain(linesServe(deps));
+  return got && { checkedAt: got.snapshot.checkedAt, statuses: got.snapshot.statuses };
 }
 
 /** D1 is down: call TfL directly, memoised per isolate so a burst doesn't multiply calls. */
@@ -159,7 +175,7 @@ export function handleLinesWithoutStore(tfl: () => TflClient, reference: Referen
     'lines',
     now,
     () => buildLinesSnapshot(tfl(), reference, now),
-    (s, stale) => json({ ...s, serverNow: now, stale, checks: null } satisfies LinesBody, { headers: { 'Cache-Control': 'no-store' } }),
+    (s, stale) => json(linesBody(s, now, stale, null), { headers: { 'Cache-Control': 'no-store' } }),
   );
 }
 

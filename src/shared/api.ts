@@ -1,7 +1,7 @@
 /** Response contracts shared by the Worker and the client. */
 import type { StationBoard } from './boards';
 import type { Mode } from './config';
-import type { Expected, LineVerdict, VerdictKind, VerdictReason } from './rules/types';
+import type { Expected, LineVerdict, StatusInput, VerdictKind, VerdictReason } from './rules/types';
 
 export interface HealthBody {
   status: 'ok';
@@ -24,7 +24,7 @@ export interface LineReport extends LineVerdict {
 
 /** Bump when a stored shape changes: a stored snapshot of another version is ignored and refreshed. */
 export const SNAPSHOT_VERSION = 3;
-export const LINES_VERSION = 1;
+export const LINES_VERSION = 2;
 
 /** One line on the home screen: TfL's status only (ADR-011). */
 export interface LineStatus {
@@ -45,6 +45,8 @@ export interface LinesSnapshot {
   checkedAt: number;
   referenceGeneratedAt: string;
   lines: LineStatus[];
+  /** TfL's statuses by line id, kept so the line screen needn't fetch its own. Not sent to the browser. */
+  statuses: Record<string, StatusInput[]>;
 }
 
 /** The latest "Check all lines" result, if recent: verdicts only. */
@@ -54,7 +56,7 @@ export interface CheckSummary {
 }
 
 /** GET /api/lines (home screen). */
-export interface LinesBody extends LinesSnapshot {
+export interface LinesBody extends Omit<LinesSnapshot, 'statuses'> {
   serverNow: number;
   stale: boolean;
   checks: CheckSummary | null;

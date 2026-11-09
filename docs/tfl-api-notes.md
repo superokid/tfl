@@ -28,6 +28,9 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
 - Horizon varies: Victoria at Oxford Circus ~17 min; Elizabeth at Bond St ~118 min; **DLR only 2–13 min**
   (Limehouse ~5), so DLR is often too short to judge (`short-horizon`).
 - Cable Car: `/Line/london-cable-car/Arrivals` → 404. Status-only.
+- `/Line/{id}/Arrivals` (no stop) answers 200 for the whole line, under 75 KB, parse < 1 ms. Unproven as a
+  replacement for per-stop calls: checked only after midnight (Victoria 1 prediction, Northern 0; the
+  per-stop calls were empty too). Re-check in service hours.
 
 **Route sequence** `/Line/{id}/Route/Sequence/{direction}`
 - `orderedLineRoutes[].naptanIds` lists each route's stops in order. Northern has 8 routes; Kennington and

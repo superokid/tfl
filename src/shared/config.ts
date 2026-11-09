@@ -140,6 +140,21 @@ export const OPENING = {
   thisMorningMaxMs: 12 * 3_600_000,
 };
 
+/**
+ * Timetables from the journey planner, for lines TfL publishes none for (Elizabeth line, Overground;
+ * ADR-018). Used only by `bun run reference`.
+ */
+export const JOURNEYS = {
+  /** A sampled service day runs from this minute (04:00) to the same time the next day. */
+  dayStartMin: 240,
+  /** Sample dates at least this many days ahead: planned service, not today's live running. */
+  daysAhead: 2,
+  /** Fewer departures than this on a sampled day means closures or no data: no reference, not "closed". */
+  minDeparturesPerDay: 20,
+  /** Safety stop for one day's paging (3 journeys a page; ~200 trains a day at most seen). */
+  maxPagesPerDay: 150,
+} as const;
+
 export const DISPLAY = {
   /** Departures per platform or direction on a station board. */
   boardRows: 3,

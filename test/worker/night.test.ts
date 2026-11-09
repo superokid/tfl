@@ -29,9 +29,20 @@ describe('closed for the night', () => {
     expect(minutes).toBeGreaterThan(5 * 60);
     expect(minutes).toBeLessThan(6 * 60 + 30);
 
-    // No timetable, and TfL only says "later this morning": closed for the night, time unknown.
-    expect(byId.get('elizabeth')).toMatchObject({ offHours: true, opensAt: null });
+    // The Elizabeth line's timetable comes from the journey planner (ADR-018): its first train, this morning.
+    const elizabeth = byId.get('elizabeth')!;
+    expect(elizabeth.offHours).toBe(true);
+    expect(londonClock(elizabeth.opensAt!).minutes).toBeLessThan(7 * 60);
     expect(byId.get('london-cable-car')).toMatchObject({ offHours: false, opensAt: null });
+  });
+
+  it('no timetable, and TfL only says "later this morning": closed for the night, time unknown', async () => {
+    const reference = {
+      ...RAIL_REFERENCE,
+      lines: RAIL_REFERENCE.lines.map((l) => (l.lineId === 'elizabeth' ? { ...l, stations: l.stations.map((st) => ({ ...st, directions: [] })) } : l)),
+    };
+    const s = await buildLinesSnapshot(tfl(), reference, NIGHT);
+    expect(s.lines.find((l) => l.lineId === 'elizabeth')).toMatchObject({ offHours: true, opensAt: null });
   });
 
   it('a timetable time that contradicts "later this morning" is dropped, not shown', async () => {

@@ -1,13 +1,16 @@
 /**
  * Builds src/shared/reference/rail.json from the live TfL API (ADR-007).
  *   bun run reference
- * Re-run when TfL changes timetables or lines. ~150 calls, 6 at a time, well under 500/min.
+ * Re-run when TfL changes timetables or lines. ~150 calls, 6 at a time, well under 500/min, plus several
+ * thousand journey planner pages for lines with no TfL timetable (ADR-018): ~30–45 min in all.
  */
 import { writeFileSync } from 'node:fs';
-import type { Mode } from '../src/shared/config.ts';
+import { JOURNEYS, type Mode } from '../src/shared/config.ts';
 import { createLimiter } from '../src/shared/limit.ts';
 import { collectStations, directionFromTimetable, learnBoundDirections, pickCheckStations } from '../src/shared/reference/derive.ts';
+import { directionFromDepartures, journeyPage, journeyTargets, pageMinutes, sampleDays } from '../src/shared/reference/journeys.ts';
 import { OVERRIDES } from '../src/shared/reference/overrides.ts';
+import type { Weekday } from '../src/shared/rules/types.ts';
 import type { DirectionFile, LineFile, ReferenceFile } from '../src/shared/reference/types.ts';
 import { redact, tflUrl } from '../src/shared/tfl-url.ts';
 import { readTflKey } from './tfl-env.ts';
@@ -21,18 +24,76 @@ const key = readTflKey();
 const limit = createLimiter(6);
 let calls = 0;
 
+/** One TfL call; a 429, 5xx or network error is retried twice (thousands of journey planner pages). */
 async function get(path: string, params: Record<string, string> = {}): Promise<unknown | null> {
-  return limit(async () => {
-    calls++;
-    try {
-      const res = await fetch(tflUrl(path, key, params), { signal: AbortSignal.timeout(30_000) });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.warn(`  ! ${path}: ${redact(String(err))}`);
-      return null;
-    }
-  });
+  for (const wait of [0, 2_000, 10_000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    const res = await limit(async () => {
+      calls++;
+      try {
+        const r = await fetch(tflUrl(path, key, params), { signal: AbortSignal.timeout(30_000) });
+        return r.ok ? { body: (await r.json()) as unknown } : r.status === 429 || r.status >= 500 ? 'retry' : null;
+      } catch (err) {
+        console.warn(`  ! ${path}: ${redact(String(err))}`);
+        return 'retry';
+      }
+    });
+    if (res === null) return null;
+    if (res !== 'retry') return res.body;
+  }
+  return null;
+}
+
+const hhmm = (min: number) => `${String(Math.floor(min / 60) % 24).padStart(2, '0')}${String(min % 60).padStart(2, '0')}`;
+
+/** One sampled day of departures from `stopId` towards `to`, paging through the journey planner. Null if a page failed. */
+async function departuresTowards(lineId: string, mode: string, stopId: string, to: string, day: string): Promise<number[] | null> {
+  const out = new Set<number>();
+  let at = { date: day, time: hhmm(JOURNEYS.dayStartMin) };
+  for (let page = 0; page < JOURNEYS.maxPagesPerDay; page++) {
+    const body = await get(`/Journey/JourneyResults/${stopId}/to/${to}`, { mode, date: at.date, time: at.time, timeIs: 'Departing' });
+    if (body === null) return null;
+    const p = journeyPage(body, lineId, stopId, day);
+    for (const d of p.departures) out.add(d);
+    if (!p.next) break;
+    const next = pageMinutes(day, p.next);
+    if (next >= JOURNEYS.dayStartMin + 1440 || next <= pageMinutes(day, at)) break;
+    at = p.next;
+  }
+  return [...out].filter((m) => m >= JOURNEYS.dayStartMin && m < JOURNEYS.dayStartMin + 1440);
+}
+
+const londonToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+
+/**
+ * A direction's timetable from the journey planner (ADR-018): every sampled day, towards every target.
+ * A day with too few trains is retried a week later; if that fails too, no reference (fallback gap).
+ */
+async function directionFromJourneys(
+  lineId: string,
+  mode: string,
+  stopId: string,
+  dir: 'inbound' | 'outbound',
+  used: Set<string>,
+): Promise<DirectionFile | null> {
+  const sequence = sequences.find((q) => (q as Json).lineId === lineId && (q as Json).direction === dir) ?? null;
+  const targets = journeyTargets(sequence, stopId);
+  if (targets.length === 0) return null; // the end of the line this way: nothing departs
+  const groups = await Promise.all(
+    sampleDays(londonToday).map(async ({ weekdays, dates }) => {
+      for (const day of dates) {
+        const each = await Promise.all(targets.map((to) => departuresTowards(lineId, mode, stopId, to, day)));
+        if (each.some((d) => d === null)) continue;
+        const departures = [...new Set(each.flat() as number[])];
+        if (departures.length >= JOURNEYS.minDeparturesPerDay) {
+          used.add(day);
+          return { weekdays, departures };
+        }
+      }
+      return { weekdays, departures: [] as number[] };
+    }),
+  );
+  return directionFromDepartures(groups as { weekdays: Weekday[]; departures: number[] }[], dir);
 }
 
 type Json = Record<string, unknown>;
@@ -89,6 +150,19 @@ const built: LineFile[] = await Promise.all(
         return { stopId: p.stopId, name: p.name, directions };
       }),
     );
+
+    // TfL publishes no timetable for this line at all (Elizabeth line, Overground): use the journey planner.
+    if (stations.every((s) => s.directions.length === 0)) {
+      const used = new Set<string>();
+      for (const s of stations) {
+        s.directions = (
+          await Promise.all(
+            (['inbound', 'outbound'] as const).map((dir) => directionFromJourneys(lineId, String(l.modeName), s.stopId, dir, used)),
+          )
+        ).filter((d): d is DirectionFile => d !== null);
+      }
+      base.notes.push(`timetables from the journey planner (${[...used].sort().join(', ') || 'no usable day'})`);
+    }
 
     const boundDirections = Object.assign({}, ...samples.map((s) => learnBoundDirections(s)));
     return { ...base, statusOnly: false, stations, boundDirections };

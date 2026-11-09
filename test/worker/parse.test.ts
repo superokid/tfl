@@ -51,6 +51,21 @@ describe('parseArrivals (live fixtures)', () => {
     expect(preds.filter((p) => p.directionKey === 'inbound').length).toBeGreaterThan(1);
   });
 
+  it('an empty direction ("") counts as missing (Mildmay at Homerton, live 9 Nov 2026: Clapham trains)', () => {
+    const a = (id: string, direction: string) => ({
+      id,
+      vehicleId: id,
+      lineId: 'mildmay',
+      platformName: 'Platform 1',
+      direction,
+      destinationNaptanId: '910GCLPHMJ1',
+      expectedArrival: '2026-11-09T08:50:00Z',
+      timing: { read: '2026-11-09T08:46:00Z' },
+    });
+    const preds = parseArrivals([a('1', 'outbound'), a('2', '')], '910GHOMRTON', {}).get('mildmay')!;
+    expect(preds.map((p) => p.directionKey)).toEqual(['outbound', 'outbound']);
+  });
+
   it('reads destinations for the board, never "Check Front of Train"', () => {
     const preds = parseArrivals(fixture('arr-victoria-oxford-circus'), '940GZZLUOXC', {}).get('victoria')!;
     expect(preds.map((p) => p.destination)).toContain('Brixton');

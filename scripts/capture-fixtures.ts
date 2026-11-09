@@ -57,6 +57,27 @@ const trimSequence = (body: unknown) => {
   };
 };
 
+/** Journey planner page: what `journeyPage` reads (ADR-018). */
+const trimJourneys = (body: unknown) => {
+  const b = body as Json;
+  const later = ((b.searchCriteria as Json | undefined)?.timeAdjustments as Json | undefined)?.later as Json | undefined;
+  return {
+    journeys: ((b.journeys as Json[] | undefined) ?? []).map((j) => ({
+      ...pick(j, ['startDateTime']),
+      legs: (j.legs as Json[]).map((l) => ({
+        ...pick(l, ['departureTime']),
+        mode: pick((l.mode as Json | undefined) ?? {}, ['id']),
+        departurePoint: pick((l.departurePoint as Json | undefined) ?? {}, ['naptanId', 'commonName']),
+        routeOptions: ((l.routeOptions as Json[] | undefined) ?? []).map((o) => ({
+          ...pick(o, ['name']),
+          lineIdentifier: pick((o.lineIdentifier as Json | undefined) ?? {}, ['id']),
+        })),
+      })),
+    })),
+    searchCriteria: { timeAdjustments: { later: later ? pick(later, ['date', 'time', 'timeIs']) : null } },
+  };
+};
+
 const trimTimetable = (body: unknown) => {
   const b = body as Json;
   const tt = b.timetable as Json | undefined;
@@ -103,6 +124,12 @@ const CAPTURES: { name: string; path: string; params?: Record<string, string>; t
     path: '/StopPoint',
     params: { lat: '51.515', lon: '-0.142', stopTypes: 'NaptanPublicBusCoachTram', radius: '400', modes: 'bus', returnLines: 'true' },
     trim: trimStops,
+  },
+  {
+    name: 'jp-elizabeth-ealing-hayes',
+    path: '/Journey/JourneyResults/910GEALINGB/to/910GHAYESAH',
+    params: { mode: 'elizabeth-line', date: '20261117', time: '1200', timeIs: 'Departing' },
+    trim: trimJourneys,
   },
   { name: 'tt-northern-euston-outbound', path: '/Line/northern/Timetable/940GZZLUEUS', params: { direction: 'outbound' }, trim: trimTimetable },
 ];

@@ -62,6 +62,18 @@ Ealing Broadway. Tram stays "Service Closed" while its timetable runs to ~01:30.
 - **Elizabeth line and all Overground lines: 404.** Without `?direction=` it returns a disambiguation whose
   own links 404.
 
+**Journey planner** `/Journey/JourneyResults/{from}/to/{to}?mode=…&date=yyyyMMdd&time=HHmm&timeIs=Departing`
+(checked 2026-11-09; used for the lines above, ADR-018)
+- 3 journeys per call, plus sometimes a walking-only one. `searchCriteria.timeAdjustments.later` gives the
+  next page's `date` and `time` (one minute after the last departure).
+- Times are London wall clock without an offset (`2026-11-17T12:04:00`); after midnight the date moves on.
+- Each journey: `legs[0].departureTime`, `mode.id`, `departurePoint.naptanId`, `routeOptions[].lineIdentifier.id`.
+- Matches TfL's timetable where both exist: Tram at East Croydon, Sunday, all 252 departures found.
+- It lists trains that stop at the destination: Elizabeth line, Ealing Broadway → West Ealing missed the 4 an
+  hour that run through it; → Hayes & Harlington found them. Union of both: 188 on a Tuesday. Eastbound,
+  → Acton Main Line found 80 a day; → Paddington (main line) found 189.
+- Paging a day costs about one call per 3 trains (Ealing westbound to Hayes: 62 calls).
+
 **Bus** `/Line/Mode/bus` ≈ 348 KB.
 
 **Nearby stops** `/StopPoint?lat&lon&stopTypes=NaptanPublicBusCoachTram&radius=400&modes=bus&returnLines=true`

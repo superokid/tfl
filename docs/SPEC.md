@@ -79,7 +79,9 @@ D1 snapshot (shared, outage fallback) · HTTP cache · `localStorage` (last good
   and longest scheduled gap ([ADR-016](adr/016-judge-each-gap-by-its-own-timetable.md)).
 - Also learns platform compass word → direction from a sample of arrivals.
 - TfL has no timetables for the Elizabeth line and Overground (404, even via its own disambiguation links):
-  those lines use the per-mode fallback gap, so they can match or be "Can't verify", never flagged.
+  their departures come from the journey planner instead, paged over a sampled Tuesday, Friday, Saturday and
+  Sunday ([ADR-018](adr/018-timetables-from-the-journey-planner.md)). A direction with a day it can't read
+  falls back to the per-mode gap (never flagged).
 - `overrides.ts`: Cable Car is status-only (no predictions exist).
 - Station index for search: `src/shared/reference/stations.json`, same script, with each station's position.
 

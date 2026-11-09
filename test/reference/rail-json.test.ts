@@ -42,6 +42,16 @@ describe('generated rail reference (src/shared/reference/rail.json)', () => {
     }
   });
 
+  it('every judged line with timetables has service Mon–Fri in every direction', () => {
+    for (const l of lines.filter((x) => !x.statusOnly)) {
+      for (const s of l.stations) {
+        for (const d of s.directions) {
+          expect(d.weekdays.slice(1, 6).every((w) => w >= 0), `${l.lineId} ${s.name} ${d.directionKey}`).toBe(true);
+        }
+      }
+    }
+  });
+
   it('expands to the engine form (Victoria has service every day)', () => {
     const victoria = lines.find((l) => l.lineId === 'victoria')!;
     const ref = expandDirection(victoria.stations[0]!.directions[0]!);

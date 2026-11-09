@@ -46,6 +46,14 @@ Ealing Broadway. Tram stays "Service Closed" while its timetable runs to ~01:30.
 - Departures from that stop: `timetable.routes[].schedules[]` with `name` ("Monday - Thursday", "Friday",
   "Saturday (also Good Friday)", "Sunday") and `knownJourneys` (`hour`, `minute`; hour ≥ 24 after midnight,
   e.g. Victoria Friday until 26:57).
+- Schedule names vary by line (checked 2026-11-09): Bakerloo, Circle, District, DLR, H&C use "Monday - Friday"
+  and "Saturdays and Public Holidays" (plural); Metropolitan "Monday - Thursday", "Friday", "Saturdays and Public
+  Holidays"; Tram "Monday to Friday", "Saturday"; Waterloo & City only "Monday - Friday" (no weekend service).
+- Night Tube lines (Piccadilly, Victoria, Central, Jubilee, Northern): Friday and Saturday run past 27:00, and
+  the Saturday and Sunday schedules start ~03:15–04:35, continuing the night before.
+- A schedule can go missing: on 2026-11-08 Piccadilly (Acton Town, Arnos Grove, both directions) came back
+  without "Monday - Thursday"; on 2026-11-09 it was there (380 journeys). The generator retries once and drops
+  a direction with any Mon–Fri day unmapped.
 - Several routes when branches pass the stop (Northern at Euston: 2).
 - 318–506 KB, parse 1.2–1.5 ms. Some stop/direction pairs 404 (District at Earl's Court, outbound).
 - **Elizabeth line and all Overground lines: 404.** Without `?direction=` it returns a disambiguation whose

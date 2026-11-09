@@ -77,7 +77,10 @@ const built: LineFile[] = await Promise.all(
         const directions = (
           await Promise.all(
             (['inbound', 'outbound'] as const).map(async (dir) => {
-              const d = directionFromTimetable(await get(`/Line/${lineId}/Timetable/${p.stopId}`, { direction: dir }), dir);
+              // One retry: TfL has briefly left a schedule out (Piccadilly, 8 Nov 2026: no Mon–Thu).
+              const fetchDir = async () =>
+                directionFromTimetable(await get(`/Line/${lineId}/Timetable/${p.stopId}`, { direction: dir }), dir);
+              const d = (await fetchDir()) ?? (await fetchDir());
               if (!d) base.notes.push(`no ${dir} timetable at ${p.name}`);
               return d;
             }),

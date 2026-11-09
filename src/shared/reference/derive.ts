@@ -97,10 +97,13 @@ const DAY_INDEX: Record<string, Weekday> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
 };
 
-/** "Monday - Thursday" → [1,2,3,4]; "Saturday (also Good Friday)" → [6]. Parenthesised notes are ignored. */
+/**
+ * "Monday - Thursday" → [1,2,3,4]; "Saturday (also Good Friday)" → [6]; "Saturdays and Public Holidays" → [6].
+ * Parenthesised notes are ignored.
+ */
 export function scheduleWeekdays(name: string): Weekday[] {
   const core = name.replace(/\(.*?\)/g, '').toLowerCase();
-  const range = /(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*(?:-|–|to)\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/.exec(core);
+  const range = /(sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\s*(?:-|–|to)\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/.exec(core);
   if (range) {
     const from = DAY_INDEX[range[1]!]!;
     const to = DAY_INDEX[range[2]!]!;
@@ -112,7 +115,7 @@ export function scheduleWeekdays(name: string): Weekday[] {
     return out;
   }
   return Object.entries(DAY_INDEX)
-    .filter(([day]) => new RegExp(`\\b${day}\\b`).test(core))
+    .filter(([day]) => new RegExp(`\\b${day}s?\\b`).test(core))
     .map(([, i]) => i);
 }
 
@@ -170,6 +173,10 @@ export function directionFromTimetable(body: unknown, directionKey: 'inbound' | 
     if (idx === -1) idx = serviceDays.push(day) - 1;
     for (const w of days) weekdays[w] = idx;
   }
+  // Every judged line runs Mon–Fri, so a gap there is a schedule TfL left out (or one we couldn't read),
+  // not a closed day: no reference (fallback gap, CANT_VERIFY) beats a false "closed". Weekend gaps are
+  // real (Waterloo & City).
+  if (weekdays.slice(1, 6).some((w) => w < 0)) return null;
   return serviceDays.length > 0 ? { directionKey, serviceDays, weekdays } : null;
 }
 

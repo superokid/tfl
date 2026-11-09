@@ -224,3 +224,11 @@ Sample of prompts used (Claude Code), with corrections.
   aren't counted as problems, and the line screen shows each check station's first train.
 - Found: Piccadilly's reference has no Mon–Thu service (spun off as its own task); a guard drops a time that
   contradicts TfL's "later this morning".
+
+## 2026-11-09: Piccadilly closed all day Mon–Thu
+- "rail.json has a broken Piccadilly entry … no service Monday–Thursday … find out why derive mis-maps it".
+- Not a naming issue for Piccadilly: live on 2026-11-09 it has "Monday - Thursday" and derives fine; the
+  8 Nov run got a response without it. The "03:30–04:15" last times are Friday/Saturday Night Tube (27:31 etc.).
+- Found while checking: "Saturdays and Public Holidays" (plural) wasn't parsed, so 7 lines had no Saturday.
+- Fix: plural day names parse; a direction with a Mon–Fri day unmapped is dropped (fallback gap,
+  CANT_VERIFY); the generator retries a timetable once. Regenerated: only Piccadilly Mon–Thu and Saturday changed.

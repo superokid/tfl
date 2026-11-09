@@ -38,6 +38,8 @@ describe('scheduleWeekdays', () => {
     ['Friday', [5]],
     ['Saturday (also Good Friday)', [6]],
     ['Sunday', [0]],
+    ['Saturdays and Public Holidays', [6]],
+    ['Monday to Friday', [1, 2, 3, 4, 5]],
     ['Monday - Friday', [1, 2, 3, 4, 5]],
     ['Saturday - Sunday', [6, 0]],
     ['Bank Holiday', []],
@@ -79,6 +81,21 @@ describe('directionFromTimetable (live fixtures)', () => {
   it('Northern at Euston merges both branch routes', () => {
     const d = directionFromTimetable(fixture('tt-northern-euston-outbound'), 'outbound')!;
     expect(d.weekdays.every((w) => w >= 0)).toBe(true);
+  });
+
+  it('a timetable missing a Mon–Fri schedule gives null, not "no service that day"', () => {
+    // Piccadilly, 8 Nov 2026: TfL left out "Monday - Thursday", so the line read as closed all day Mon–Thu.
+    const body = structuredClone(fixture('tt-victoria-brixton'));
+    for (const r of body.timetable.routes) {
+      r.schedules = r.schedules.filter((s: { name: string }) => s.name !== 'Monday - Thursday');
+    }
+    expect(directionFromTimetable(body, 'outbound')).toBeNull();
+  });
+
+  it('a missing Sunday schedule is real (Waterloo & City): that day stays -1', () => {
+    const body = structuredClone(fixture('tt-victoria-brixton'));
+    for (const r of body.timetable.routes) r.schedules = r.schedules.filter((s: { name: string }) => s.name !== 'Sunday');
+    expect(directionFromTimetable(body, 'outbound')!.weekdays[0]).toBe(-1);
   });
 
   it('a disambiguation or empty body gives null', () => {

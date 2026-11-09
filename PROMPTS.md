@@ -232,3 +232,9 @@ Sample of prompts used (Claude Code), with corrections.
 - Found while checking: "Saturdays and Public Holidays" (plural) wasn't parsed, so 7 lines had no Saturday.
 - Fix: plural day names parse; a direction with a Mon–Fri day unmapped is dropped (fallback gap,
   CANT_VERIFY); the generator retries a timetable once. Regenerated: only Piccadilly Mon–Thu and Saturday changed.
+
+## 2026-11-09: block search engines and bots
+- "block all google search and bot request".
+- robots.txt disallows everything; every page and API response carries `X-Robots-Tag: noindex, nofollow`;
+  the API answers 403 to crawler, AI-scraper and scripted user agents before touching TfL or D1.
+- Static pages don't run the Worker, so bots that ignore robots.txt can still fetch HTML; only the API is enforced.

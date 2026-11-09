@@ -5,6 +5,7 @@ const BASE_HEADERS = {
   'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
+  'X-Robots-Tag': 'noindex, nofollow',
 } as const;
 
 export function json(body: unknown, init: ResponseInit = {}): Response {

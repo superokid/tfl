@@ -2,6 +2,7 @@ import type { ErrorBody, HealthBody } from '../shared/api';
 import { LINES_VERSION, SNAPSHOT_VERSION, type IndexBody, type LinesSnapshot, type Snapshot } from '../shared/api';
 import { BUSES, RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
 import { EdgeJsonCache, handleBusRoute, handleBusSearch } from './bus';
+import { isBot } from './bots';
 import { redact } from '../shared/tfl-url';
 import { json } from './http';
 import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
@@ -51,6 +52,11 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
       status: 405,
       headers: { Allow: 'GET, HEAD' },
     });
+  }
+
+  // Crawlers and scrapers never reach TfL or D1.
+  if (isBot(request.headers.get('User-Agent'))) {
+    return json({ error: 'forbidden' } satisfies ErrorBody, { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
 
   if (url.pathname === '/api/health') {

@@ -294,6 +294,21 @@ describe('CLOSED and operating hours', () => {
     });
   });
 
+  it('"Service Closed" at night is outside hours, not a planned closure', () => {
+    const night = Date.UTC(2026, 10, 10, 2, 0);
+    expect(judgeLine(twoStations([], [], [status('Service Closed')]), night)).toMatchObject({
+      verdict: 'CLOSED',
+      reason: 'outside-hours',
+    });
+  });
+
+  it('"Service Closed" in timetable hours stays a closure', () => {
+    expect(judgeLine(twoStations([], [], [status('Service Closed')]), now)).toMatchObject({
+      verdict: 'CLOSED',
+      reason: 'planned-closure',
+    });
+  });
+
   it('03:00 on a weekday: outside timetable hours, never a mismatch', () => {
     const night = Date.UTC(2026, 10, 10, 3, 0);
     expect(judgeLine(twoStations([], []), night)).toMatchObject({

@@ -4,40 +4,19 @@
  */
 import { FALLBACK_NORMAL_GAP_MIN, RULES, VEHICLE_NOUN } from '../config';
 import { analyseDirection, thresholdFor } from './gaps';
-import { londonClock } from './london';
+import { serviceAt, type ServiceState } from './hours';
 import { activeStatuses, mapStatus, mostRestrictive } from './status';
 import type {
   CheckStation,
   DirectionEvidence,
-  DirectionRef,
   Expected,
   LineInput,
   LineVerdict,
   VerdictKind,
   VerdictReason,
-  Weekday,
 } from './types';
 
 type Ranked = Exclude<Expected, 'PARTIAL'>;
-type ServiceState = { kind: 'in'; normalGapMin: number | null } | { kind: 'outside' } | { kind: 'edge' };
-
-/** Is this direction in service now? Checks today's service day and yesterday's after-midnight tail. */
-function serviceAt(ref: DirectionRef, now: number): ServiceState {
-  const { weekday, minutes } = londonClock(now);
-  const yesterday = ((weekday + 6) % 7) as Weekday;
-  const candidates = [
-    { day: ref.days[weekday], t: minutes },
-    { day: ref.days[yesterday], t: minutes + 1440 },
-  ];
-  for (const { day, t } of candidates) {
-    if (!day || t < day.firstMin || t > day.lastMin) continue;
-    if (t - day.firstMin < RULES.dayEdgeMin || day.lastMin - t < RULES.dayEdgeMin) return { kind: 'edge' };
-    const band = day.bands.find((b) => b.fromMin <= t && t < b.toMin);
-    return { kind: 'in', normalGapMin: band?.normalGapMin ?? null };
-  }
-  return { kind: 'outside' };
-}
-
 /**
  * `throughOnly`: count only confirmed services that don't terminate here. Used when the evidence must
  * prove a service *is* running (STALE_ALERT), so ghost or terminating trains can't fake it.
@@ -149,7 +128,14 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
   const partials = mapped.filter((m) => m.expected === 'PARTIAL').map((m) => m.status);
   const base = mostRestrictive(mapped.map((m) => m.expected).filter((e): e is Ranked => e !== null && e !== 'PARTIAL'));
 
-  if (base === 'CLOSED') return verdict('CLOSED', 'planned-closure', `TfL reports ${tflSays}.`);
+  if (base === 'CLOSED') {
+    // TfL says "Service Closed" every night: outside timetable hours that is routine, not a planned closure.
+    const refs = line.stations.flatMap((s) => s.directions);
+    const offHours = refs.length > 0 && refs.every((r) => serviceAt(r, now).kind === 'outside');
+    return offHours
+      ? verdict('CLOSED', 'outside-hours', 'Outside service hours.')
+      : verdict('CLOSED', 'planned-closure', `TfL reports ${tflSays}.`);
+  }
   if (line.stations.length === 0) {
     return verdict('CANT_VERIFY', 'status-only', "Live predictions aren't available for this line, so its status can't be checked.");
   }

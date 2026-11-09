@@ -10,6 +10,7 @@
   --minor: #8a5a00;
   --major: #b3400a;
   --closed: #b3261e;
+  --night: #4b4f8f;
   --alert-bg: #fdecea;
   --ok-bg: #e8f5ec;
   --warn-fg: #6b4400;
@@ -149,8 +150,13 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.92rem; font-weight: 500; color: var(--tone); }
 .status-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; font-size: 0.7rem; font-weight: 700; color: #fff; flex: none; background: var(--tone); }
 .status-good, .check-ok { --tone: var(--good); } .status-minor { --tone: var(--minor); } .status-major { --tone: var(--major); }
-.status-closed, .check-alert { --tone: var(--closed); } .status-unknown { --tone: var(--muted); } .check-muted { --tone: var(--border); }
+.status-closed, .check-alert { --tone: var(--closed); } .status-off { --tone: var(--night); } .status-unknown { --tone: var(--muted); } .check-muted { --tone: var(--border); }
 .status-big { font-size: 1.25rem; font-weight: 700; }
+.status-off .status-icon { font-size: 0.8rem; }
+.line-row-off { opacity: 0.85; }
+.opens-in { color: var(--muted); font-size: 0.92rem; }
+.first-train { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem; color: var(--night); font-size: 0.95rem; }
+.first-train strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .status-big .status-icon { width: 1.5rem; height: 1.5rem; font-size: 0.85rem; }
 
 .note { font-size: 0.82rem; }

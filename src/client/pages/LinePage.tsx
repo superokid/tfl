@@ -5,7 +5,7 @@ import { useLive, useServerNow } from '../hooks/live';
 import type { useSaved } from '../hooks/saved';
 import { LineSkeleton } from '../components/Skeletons';
 import { LoadError, PageHead, Retrying, SaveButton, StaleBanner, StatusText, Updated } from '../components/ui';
-import { checkCard, evidenceText, isOverThreshold, severityFromSays } from '../lib/view';
+import { checkCard, evidenceText, formatIn, isOverThreshold, severityFromSays } from '../lib/view';
 
 /**
  * One line: TfL's status and message, our live check in plain words, and next trains. Fetched on open;
@@ -39,7 +39,15 @@ function LineBodyView({ line, now }: { line: LineBody; now: number }) {
     <>
       <section className="card">
         <p className="small muted">TfL says</p>
-        <StatusText tflSays={line.tflSays} severity={severityFromSays(line.tflSays)} big />
+        <StatusText
+          tflSays={line.tflSays}
+          severity={severityFromSays(line.tflSays)}
+          big
+          closed={line.offHours ? { opensAt: line.opensAt ?? null, now } : undefined}
+        />
+        {line.offHours && typeof line.opensAt === 'number' && line.opensAt > now && (
+          <p className="opens-in">First trains {formatIn(line.opensAt, now)}, from the timetable.</p>
+        )}
         {line.messages.map((m) => (
           <p key={m} className="tfl-message">
             {m}
@@ -47,21 +55,23 @@ function LineBodyView({ line, now }: { line: LineBody; now: number }) {
         ))}
       </section>
 
-      <section className={`card check check-${card.tone}`} aria-label="Live check">
-        <p className="small muted">Live trains</p>
-        <p className="check-title">{card.text}</p>
-        {card.detail && <p>{card.detail}</p>}
-        {line.evidence.length > 0 && (
-          <details className="evidence">
-            <summary className="small">How we checked</summary>
-            <Evidence line={line} />
-          </details>
-        )}
-      </section>
+      {!line.offHours && (
+        <section className={`card check check-${card.tone}`} aria-label="Live check">
+          <p className="small muted">Live trains</p>
+          <p className="check-title">{card.text}</p>
+          {card.detail && <p>{card.detail}</p>}
+          {line.evidence.length > 0 && (
+            <details className="evidence">
+              <summary className="small">How we checked</summary>
+              <Evidence line={line} />
+            </details>
+          )}
+        </section>
+      )}
 
       {line.boards.length > 0 && (
         <section aria-label="Next trains">
-          <h3 className="section-title">Next trains</h3>
+          <h3 className="section-title">{line.offHours && line.boards.every((b) => b.directions.length === 0) ? 'First trains' : 'Next trains'}</h3>
           <p className="small muted section-sub">At the two stations we check. Search above for any other station.</p>
           <div className="boards">
             {line.boards.map((b) => (

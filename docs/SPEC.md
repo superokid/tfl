@@ -135,7 +135,7 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 | `STALE_ALERT` | Expected `NONE`, but ≥ 2 such stations have services within the threshold; or expected `DEGRADED`, but at ≥ 2 stations every gap is ≤ 1.5 × normal. |
 | `MATCH` | ≥ 2 usable stations, and **every** usable station agrees with the status. One that contradicts it (too little to flag) → `CANT_VERIFY` (`mixed-evidence`). |
 | `CANT_VERIFY` | Failed, invalid, empty or frozen data; < 2 usable stations; unknown status; `PARTIAL` with no affected stops or no check station in them; status-only line; budget hit; mismatch based on a fallback gap. |
-| `CLOSED` | Expected `CLOSED`, or outside timetable hours. Never a mismatch. |
+| `CLOSED` | Expected `CLOSED`, or outside timetable hours. Never a mismatch. Reason `outside-hours` when every check direction is outside timetable hours, else `planned-closure`. |
 
 - Ghost and boundary trains during a suspension: seen live in Phase 1 and ruled out (§5.2).
 - Evidence: station, direction, normal gap (and whether it's a fallback), observed gap, horizon,
@@ -155,6 +155,11 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
   it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
   mismatches. "Lines near me" filters a rail tab to the lines at the closest stations, computed on the phone
   ([ADR-013](adr/013-rail-lines-near-you.md)).
+- **Closed outside hours** (TfL says closed and the timetable has no service now, or TfL's message says
+  "Service will resume"): routine, not a problem. Calm tone and ☾ icon, "Closed · opens about 05:30", sorted
+  last, not counted in "N lines have problems". The time is TfL's if its message gives one, else the first
+  timetabled train at the check stations; none if unknown or more than 12 h off when TfL says "later this
+  morning". The line screen drops the "Live trains" card and shows each check station's first train.
 - **Line:** TfL's status and message; "Live trains" card in plain words (why it couldn't check, if so); next
   trains at both check stations; "How we checked" evidence.
 - **Station / bus stop:** each line's status with live departures by platform, 3 each ("More times" for

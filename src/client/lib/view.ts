@@ -1,6 +1,6 @@
 /** Pure display logic (unit-tested; components stay thin). Plain words for passengers, no internal jargon. */
 import type { LineStatus } from '../../shared/api';
-import type { Mode } from '../../shared/config';
+import { LONDON_TZ, type Mode } from '../../shared/config';
 import { mapStatus } from '../../shared/rules/status';
 import type { DirectionEvidence, Expected, VerdictKind, VerdictReason } from '../../shared/rules/types';
 
@@ -22,7 +22,8 @@ export const tabOf = (mode: Mode): Tab => (mode === 'cable-car' ? 'tram' : mode 
 
 // ── Status ──────────────────────────────────────────────────────────────────────────────────────────
 
-export type Tone = 'good' | 'minor' | 'major' | 'closed' | 'unknown';
+/** `off`: closed outside its hours (night, or a day it doesn't run). Routine, not a problem. */
+export type Tone = 'good' | 'minor' | 'major' | 'closed' | 'off' | 'unknown';
 
 export function statusTone(severity: Expected | null): Tone {
   switch (severity) {
@@ -59,24 +60,39 @@ export function severityFromSays(tflSays: string): Expected | null {
   return (mapped as Expected[]).reduce((worst, e) => (SEVERITY_ORDER.indexOf(e) < SEVERITY_ORDER.indexOf(worst) ? e : worst));
 }
 
-/** Problems first (worst first), then alphabetical: as TfL's own status page. */
-export function sortLines<T extends Pick<LineStatus, 'lineName' | 'severity'>>(lines: T[]): T[] {
-  return [...lines].sort(
-    (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity) || a.lineName.localeCompare(b.lineName),
-  );
+type Listed = Pick<LineStatus, 'severity'> & { offHours?: boolean; opensAt?: number | null };
+
+/** Problems first (worst first), then alphabetical: as TfL's own status page. Lines closed for the night last. */
+export function sortLines<T extends Pick<LineStatus, 'lineName'> & Listed>(lines: T[]): T[] {
+  const rank = (l: T) => (l.offHours ? SEVERITY_ORDER.length : SEVERITY_ORDER.indexOf(l.severity));
+  return [...lines].sort((a, b) => rank(a) - rank(b) || a.lineName.localeCompare(b.lineName));
 }
 
-/** One line under the tabs: "Good service on all Tube lines" or "2 lines have problems". */
-export function tabSummary(lines: Pick<LineStatus, 'severity'>[], tabLabel: string): string {
-  const problems = lines.filter((l) => l.severity !== 'NORMAL').length;
+/** One line under the tabs: "Good service on all Tube lines", "2 lines have problems", or when it opens. */
+export function tabSummary(lines: Listed[], tabLabel: string, now: number): string {
   if (lines.length === 0) return '';
-  if (problems === 0) return lines.length === 1 ? 'Good service' : `Good service on all ${tabLabel} lines`;
-  return `${problems} ${problems === 1 ? 'line has' : 'lines have'} problems`;
+  const open = lines.filter((l) => !l.offHours);
+  const problems = open.filter((l) => l.severity !== 'NORMAL').length;
+  if (open.length === 0) {
+    const times = lines.map((l) => l.opensAt).filter((t): t is number => typeof t === 'number');
+    const first = times.length > 0 ? `, first trains about ${formatClock(Math.min(...times), now)}` : '';
+    return `${lines.length === 1 ? 'Closed now' : `All ${tabLabel} lines closed`}${first}`;
+  }
+  if (problems > 0) return `${problems} ${problems === 1 ? 'line has' : 'lines have'} problems`;
+  if (open.length < lines.length) return 'Good service on all open lines';
+  return lines.length === 1 ? 'Good service' : `Good service on all ${tabLabel} lines`;
 }
 
 /** TfL's reason under a line with a problem on the home list ("Minor delays due to …"); null otherwise. */
-export function rowReason(line: Pick<LineStatus, 'severity' | 'messages'>): string | null {
+export function rowReason(line: Pick<LineStatus, 'severity' | 'messages'> & { offHours?: boolean; opensAt?: number | null }): string | null {
+  // Closed for the night with a known time: the status says it all ("Closed · opens about 05:35").
+  if (line.offHours && typeof line.opensAt === 'number') return null;
   return line.severity !== 'NORMAL' && line.messages[0] ? line.messages[0] : null;
+}
+
+/** Status words for a line closed outside its hours: "Closed · opens about 05:35", or "Closed for now". */
+export function closedText(opensAt: number | null | undefined, now: number): string {
+  return typeof opensAt === 'number' && opensAt > now ? `Closed · opens about ${formatClock(opensAt, now)}` : 'Closed for now';
 }
 
 /** "Stop RC · towards Marble Arch": how passengers tell same-named bus stops apart. */
@@ -169,6 +185,25 @@ export function formatDue(at: number, now: number): string {
   const ms = at - now;
   if (ms <= 30_000) return 'Due';
   return `${Math.max(1, Math.round(ms / 60_000))} min`;
+}
+
+const clock = new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const dayClock = new Intl.DateTimeFormat('en-GB', { timeZone: LONDON_TZ, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+/** London clock time: "05:35" within the next 20 h, else with the day ("Mon 06:00"). */
+export function formatClock(at: number, now: number): string {
+  return (at - now < 20 * 3_600_000 ? clock : dayClock).format(at).replace(',', '');
+}
+
+/** "in 35 min", "in 4 h 20 min", "in 1 day 4 h"; "now" once due. */
+export function formatIn(at: number, now: number): string {
+  const m = Math.round((at - now) / 60_000);
+  if (m <= 0) return 'now';
+  if (m < 60) return `in ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `in ${h} h${m % 60 ? ` ${m % 60} min` : ''}`;
+  const d = Math.floor(h / 24);
+  return `in ${d} day${d === 1 ? '' : 's'}${h % 24 ? ` ${h % 24} h` : ''}`;
 }
 
 export function formatAge(ms: number): string {

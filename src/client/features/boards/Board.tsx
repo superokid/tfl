@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { StationBoard } from '../../../shared/boards';
 import { DISPLAY } from '../../../shared/config';
 import { href } from '../../hooks/route';
+import { formatClock, formatIn } from '../../lib/view';
 import { Times, upcoming } from './Times';
 
 export function Board({ board, now, link = true }: { board: StationBoard; now: number; link?: boolean }) {
@@ -17,6 +18,11 @@ export function Board({ board, now, link = true }: { board: StationBoard; now: n
       )}
       {!board.live ? (
         <p className="small muted">Live times unavailable right now.</p>
+      ) : directions.length === 0 && typeof board.firstTrainAt === 'number' && board.firstTrainAt > now ? (
+        <p className="first-train">
+          <span aria-hidden="true">☾</span> First train about <strong>{formatClock(board.firstTrainAt, now)}</strong>{' '}
+          <span className="muted">({formatIn(board.firstTrainAt, now)})</span>
+        </p>
       ) : directions.length === 0 ? (
         <p className="small muted">No services predicted.</p>
       ) : (

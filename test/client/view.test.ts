@@ -9,6 +9,9 @@ import {
   loadErrorText,
   prettyStatus,
   rowNote,
+  closedText,
+  formatClock,
+  formatIn,
   rowReason,
   severityFromSays,
   searchByName,
@@ -67,9 +70,41 @@ describe('status in plain words', () => {
   });
 
   it('tab summary', () => {
-    expect(tabSummary([{ severity: 'NORMAL' }, { severity: 'NORMAL' }], 'Tube')).toBe('Good service on all Tube lines');
-    expect(tabSummary([{ severity: 'NORMAL' }, { severity: 'MINOR' }], 'Tube')).toBe('1 line has problems');
-    expect(tabSummary([{ severity: 'NORMAL' }], 'Elizabeth line')).toBe('Good service');
+    expect(tabSummary([{ severity: 'NORMAL' }, { severity: 'NORMAL' }], 'Tube', 0)).toBe('Good service on all Tube lines');
+    expect(tabSummary([{ severity: 'NORMAL' }, { severity: 'MINOR' }], 'Tube', 0)).toBe('1 line has problems');
+    expect(tabSummary([{ severity: 'NORMAL' }], 'Elizabeth line', 0)).toBe('Good service');
+  });
+
+  describe('closed for the night', () => {
+    const night = Date.UTC(2026, 10, 9, 1, 10); // Mon 01:10 London (GMT)
+    const off = (opensAt: number | null) => ({ severity: 'CLOSED' as const, offHours: true, opensAt });
+
+    it('is not counted as a problem', () => {
+      expect(tabSummary([off(Date.UTC(2026, 10, 9, 5, 40)), off(Date.UTC(2026, 10, 9, 5, 30))], 'Tube', night)).toBe(
+        'All Tube lines closed, first trains about 05:30',
+      );
+      expect(tabSummary([off(null)], 'Elizabeth line', night)).toBe('Closed now');
+      expect(tabSummary([off(null), { severity: 'NORMAL' }], 'Tube', night)).toBe('Good service on all open lines');
+      expect(tabSummary([off(null), { severity: 'MINOR' }], 'Tube', night)).toBe('1 line has problems');
+    });
+
+    it('a daytime closure is still a problem and sorts first; night closures sort last', () => {
+      const l = (lineName: string, x: object) => ({ lineName, severity: 'NORMAL' as const, ...x });
+      const sorted = sortLines([l('A', off(1)), l('B', {}), l('C', { severity: 'CLOSED', offHours: false })]);
+      expect(sorted.map((x) => x.lineName)).toEqual(['C', 'B', 'A']);
+    });
+
+    it('status words and times', () => {
+      expect(closedText(Date.UTC(2026, 10, 9, 5, 35), night)).toBe('Closed · opens about 05:35');
+      expect(closedText(null, night)).toBe('Closed for now');
+      expect(formatClock(Date.UTC(2026, 10, 10, 6, 0), night)).toBe('Tue 06:00');
+      expect(formatIn(Date.UTC(2026, 10, 9, 5, 35), night)).toBe('in 4 h 25 min');
+      expect(formatIn(night + 35 * 60_000, night)).toBe('in 35 min');
+      // TfL's message adds nothing once the time is shown; without one it stays.
+      const msg = ['Service will resume later this morning.'];
+      expect(rowReason({ ...off(Date.UTC(2026, 10, 9, 5, 35)), messages: msg })).toBeNull();
+      expect(rowReason({ ...off(null), messages: msg })).toBe(msg[0]);
+    });
   });
 
   it('modes map to tabs; cable car sits with tram', () => {

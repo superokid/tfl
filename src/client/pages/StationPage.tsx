@@ -75,7 +75,13 @@ export function StationPage({ id, saved, idle }: { id: string; saved: ReturnType
               <section key={lineId} className="card line-card" style={{ borderLeftColor: lineColour(lineId) }} aria-label={lineName}>
                 <a className="line-card-head" href={href({ page: 'line', id: lineId })}>
                   <h3>{lineName}</h3>
-                  {status && <StatusText tflSays={status.tflSays} severity={status.severity} />}
+                  {status && (
+                    <StatusText
+                      tflSays={status.tflSays}
+                      severity={status.severity}
+                      closed={status.offHours ? { opensAt: status.opensAt ?? null, now } : undefined}
+                    />
+                  )}
                   <span className="chevron" aria-hidden="true">
                     ›
                   </span>

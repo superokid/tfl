@@ -104,7 +104,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
           {live.data && (
             <>
               <div className="near-top">
-                <p className="tab-summary">{tabSummary(shown, tabLabel)}
+                <p className="tab-summary">{tabSummary(shown, tabLabel, now ?? live.data.checkedAt)}
                   {near.length > 0 && ' near you'}</p>
                 <button type="button" className="button button-sm" aria-pressed={where.state !== 'off'} onClick={where.state === 'off' ? locate : clearWhere}>
                   {where.state === 'off' ? 'Lines near me' : 'All lines'}
@@ -114,7 +114,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
               <ul className="lines">
                 {shown.map((l) => (
                   <li key={l.lineId}>
-                    <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} />
+                    <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} now={now ?? live.data!.checkedAt} />
                   </li>
                 ))}
               </ul>
@@ -154,13 +154,13 @@ function NearNote({ where, index, near, tabLabel }: { where: Where; index: unkno
 
 const isAlert = (v: VerdictKind | undefined) => v === 'HIDDEN_DISRUPTION' || v === 'STALE_ALERT';
 
-function LineRow({ line, verdict }: { line: LineStatus; verdict: VerdictKind | undefined }) {
+function LineRow({ line, verdict, now }: { line: LineStatus; verdict: VerdictKind | undefined; now: number }) {
   const note = rowNote(verdict);
   const reason = rowReason(line);
   return (
-    <a className="line-row" href={href({ page: 'line', id: line.lineId })} style={{ borderLeftColor: lineColour(line.lineId) }}>
+    <a className={line.offHours ? 'line-row line-row-off' : 'line-row'} href={href({ page: 'line', id: line.lineId })} style={{ borderLeftColor: lineColour(line.lineId) }}>
       <span className="line-name">{line.lineName}</span>
-      <StatusText tflSays={line.tflSays} severity={line.severity} />
+      <StatusText tflSays={line.tflSays} severity={line.severity} closed={line.offHours ? { opensAt: line.opensAt, now } : undefined} />
       {reason && <span className="row-reason">{reason}</span>}
       {note && <span className={`note note-${note.tone}`}>{note.text}</span>}
       <span className="chevron" aria-hidden="true">

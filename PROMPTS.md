@@ -216,3 +216,11 @@ Sample of prompts used (Claude Code), with corrections.
   The cause couldn't be confirmed from logs (log query not permitted in the session).
 - ADR-015: the line screen reuses the statuses in the home screen's `lines` snapshot when < 90 s old, so a
   line costs 2 calls, and a status failure no longer 503s it. Whole-line arrivals (2 → 1) left unproven.
+
+## 2026-11-09: when a closed line opens
+- "at night it only show service unavailable. should show when it open again. and should have better UIUX".
+- At night TfL marks every line "Service Closed" and only W&C says when it reopens. Lines closed outside their
+  hours now show "Closed · opens about 05:28" (TfL's time, else the first timetabled train), in a calm tone,
+  aren't counted as problems, and the line screen shows each check station's first train.
+- Found: Piccadilly's reference has no Mon–Thu service (spun off as its own task); a guard drops a time that
+  contradicts TfL's "later this morning".

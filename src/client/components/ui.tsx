@@ -2,7 +2,7 @@
 import { Component, Fragment, type ReactNode, useEffect } from 'react';
 import { Bone } from './Skeletons';
 import type { SavedItem } from '../hooks/saved';
-import { formatAge, statusTone, type Tone } from '../lib/view';
+import { closedText, formatAge, statusTone, type Tone } from '../lib/view';
 import type { Expected } from '../../shared/rules/types';
 import { prettyStatus } from '../lib/view';
 
@@ -111,17 +111,30 @@ export function LoadError({ error, onRetry, what }: { error: string | null; onRe
   );
 }
 
-const TONE_ICON: Record<Tone, string> = { good: '✓', minor: '!', major: '!', closed: '✕', unknown: '?' };
+const TONE_ICON: Record<Tone, string> = { good: '✓', minor: '!', major: '!', closed: '✕', off: '☾', unknown: '?' };
 
-/** TfL's status in plain words, with an icon so colour is never the only signal. */
-export function StatusText({ tflSays, severity, big = false }: { tflSays: string; severity: Expected | null; big?: boolean }) {
-  const tone = statusTone(severity);
+/**
+ * TfL's status in plain words, with an icon so colour is never the only signal. `closed` (a line closed
+ * outside its hours) shows when it opens instead, in a calm tone: it is routine, not a problem.
+ */
+export function StatusText({
+  tflSays,
+  severity,
+  big = false,
+  closed,
+}: {
+  tflSays: string;
+  severity: Expected | null;
+  big?: boolean;
+  closed?: { opensAt: number | null; now: number };
+}) {
+  const tone = closed ? 'off' : statusTone(severity);
   return (
     <span className={`status status-${tone} ${big ? 'status-big' : ''}`}>
       <span className="status-icon" aria-hidden="true">
         {TONE_ICON[tone]}
       </span>
-      {prettyStatus(tflSays)}
+      {closed ? closedText(closed.opensAt, closed.now) : prettyStatus(tflSays)}
     </span>
   );
 }

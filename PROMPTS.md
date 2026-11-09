@@ -247,3 +247,10 @@ Sample of prompts used (Claude Code), with corrections.
   ahead. Also corrected: it's an hourly median, merged across equal hours, not an average.
 - "fix it": each gap is judged against the timetable hours it overlaps, with the longest scheduled gap
   (ADR-016). Tests first, from the live case.
+
+## 2026-11-09: home page checks the open tab
+- Reviewer: "the home page only shows a mismatch if someone opened that line in the last 10 min". In fact it
+  showed one only from a check-all that no screen ran, so never.
+- "is it possible to reduce it more? like only when user open the right tab?" → "ok fix them all".
+- `/api/checks/:tab` checks the open tab's lines (Tube ≤ 24 TfL calls), one shared snapshot per tab. Rows
+  say "Live trains not checked" when they weren't, instead of showing nothing (ADR-017).

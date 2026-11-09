@@ -2,6 +2,13 @@
 
 What was checked against live TfL data, and what it changed. Newest first.
 
+## 2026-11-09, home checks the open tab (ADR-017), dev server against live TfL (Mon 08:06)
+- `/api/checks/:tab`: Tube 1.7 KB, 6.9 s cold, then 28 ms from D1; Elizabeth 0.7 s; Overground 5.2 s;
+  DLR 0.5 s; Tram 0.4 s. Each returned only its own lines; `/api/checks/bus` → 404; `/api/lines` has no verdicts.
+- Home at 360 px (headless Chromium): every Tube row shows "Live trains match" or "Live trains not checked".
+- Peak-hour Tube: 5 match, 4 "mixed signals", Bakerloo and Waterloo & City too little data. Overground:
+  Liberty and Mildmay can't be judged (no timetable, ADR-005 fallback).
+
 ## 2026-11-09, tram false alarm (ADR-016)
 - Reported: Tram flagged at East Croydon on Sunday night, 14 min gap; TfL's Sunday timetable has 15 there.
 - Live timetable: last outbound trams 01:01, 01:02, 01:17. At ~00:50 the rule used the 00:00 hour's median

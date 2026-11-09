@@ -34,7 +34,8 @@ Phone ──► static page (free, cached; service worker opens it offline)
      └──► Worker, one endpoint per screen, fetched when the screen is opened (ADR-011):
             /api/lines          home: statuses ──► D1 snapshot (≤ 30 s) ──► TfL (1–2 calls), one refresher
             /api/line/:id       one line's check + next trains ──► edge cache 30 s (served ≤ 90 s old, refreshed behind) ──► TfL (2 calls; status from the lines snapshot)
-            /api/checks         every line's check, on request only; no button in the app (~42 calls)
+            /api/checks/:tab    the open home tab's checks ──► D1 snapshot per tab (≤ 30 s) ──► TfL (Tube ≤ 24 calls) (ADR-017)
+            /api/checks         every line's check, for verification by hand; no screen calls it (~42 calls)
             /api/station/:id    any station or bus stop ──► edge 30 s ──► TfL (1–4 calls)
             /api/bus/:route     status + next buses at every stop ──► edge 30 s ──► TfL (2 calls)
             /api/nearby?lat&lon the 5 closest bus stops with next buses ──► edge 30 s ──► TfL (≤ 6 calls)
@@ -48,7 +49,7 @@ Phone ──► static page (free, cached; service worker opens it offline)
   browser keeps its own copy for no signal; a 10 s back-off stops retry storms.
 - **Survives repeats** (ADR-006): a D1 lease means one refresher; concurrent station requests share one fetch.
 - **Shares a free Cloudflare account** (ADR-009): page loads are free; ≤ 2 D1 writes per refresh
-  (≤ ~5,760/day worst case); the page polls every 60 s and stops after 10 min idle; a per-IP limit of 60 requests/min
+  (≤ ~5,760/day per snapshot; ~34,600 if every home tab stayed open all day, ADR-017); the page polls every 60 s and stops after 10 min idle; a per-IP limit of 60 requests/min
   protects the TfL key (ADR-014).
 
 ## How it was verified
@@ -81,14 +82,15 @@ Claude Code; every change was reviewed in conversation and checked against live 
 - **Elizabeth line and Overground are never flagged:** TfL has no timetables for them (404), so there's no
   "usual" gap. They can match or be "Can't verify". The **Cable Car** has no predictions at all: status only.
 - **DLR** predictions reach only 2–13 min ahead, so it's mostly "Can't verify".
-- **Thresholds** were tuned on one day (a Sunday); the Tram flag seen was marginal (9.01 vs 9 min).
+- **Thresholds** were tuned on one day (a Sunday). The Tram flags seen were TfL's own uneven timetable
+  (paired trams, the last tram's 15 min gap); each gap is now judged by the timetable where it falls (ADR-016).
 - **Not checked:**
   - arrival times against tfl.gov.uk's own boards (statuses were compared with the site; the flagged
     Victoria gap was checked only against raw API arrivals);
   - the service worker's offline open in a real phone browser.
 - **First visitor after 90 s idle** waits ~2 s for live statuses and ~1.3 s for a line (measured in dev); cached copies answer at once.
-- **The home page shows mismatches only if a line was checked in the last 10 min** (someone opened it or
-  ran a check on a line page); it no longer checks all lines in the background (ADR-011).
+- **The home page checks only the open tab** (ADR-017). The first viewer after 90 s waits for it (Tube
+  ~7 s cold in dev, 24 TfL calls); TfL's statuses show first.
 - **Abuse limits are partial:** the per-IP limit (ADR-014) is per Cloudflare location and eventually
   consistent, so many IPs together can still exhaust the TfL key.
 - Night view says "Closed" but not "checks resume at HH:MM"; no history or trends.

@@ -2,6 +2,16 @@
 
 What was checked against live TfL data, and what it changed. Newest first.
 
+## 2026-11-09, tram false alarm (ADR-016)
+- Reported: Tram flagged at East Croydon on Sunday night, 14 min gap; TfL's Sunday timetable has 15 there.
+- Live timetable: last outbound trams 01:01, 01:02, 01:17. At ~00:50 the rule used the 00:00 hour's median
+  (6, threshold 12) for the whole look-ahead. Daytime trams run in pairs (median 4, longest 7): the
+  8 Nov 9.4 min "disruption" was the same cause.
+- Fixed: each gap judged against the timetable hours it overlaps, `max(2 × median, longest + 5)`. Tests
+  reproduce both cases (now `MATCH`), and a 14 min gap in 6–8 min service is still flagged.
+- Regenerated `rail.json` by day: platform compass words are now learnt for most lines (the last run was at
+  01:19, with no trains); Circle medians at Edgware Road and Notting Hill Gate changed with TfL's timetable.
+
 ## 2026-11-08 (Sunday), local dev against live TfL
 
 | Check | Result |

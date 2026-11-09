@@ -238,3 +238,12 @@ Sample of prompts used (Claude Code), with corrections.
 - robots.txt disallows everything; every page and API response carries `X-Robots-Tag: noindex, nofollow`;
   the API answers 403 to crawler, AI-scraper and scripted user agents before touching TfL or D1.
 - Static pages don't run the Worker, so bots that ignore robots.txt can still fetch HTML; only the API is enforced.
+
+## 2026-11-09: tram false alarm
+- Reviewer: "the Tram showed Worse than reported at East Croydon, a 14 min gap. TfL's own Sunday timetable
+  has a 15 min gap there at that hour. Your usual gap is a 3 hour average".
+- First answer blamed only paired trams (median vs longest gap). Checking the live timetable showed the
+  reviewer's point too: the normal gap was taken at the moment of the check and applied to the whole hour
+  ahead. Also corrected: it's an hourly median, merged across equal hours, not an average.
+- "fix it": each gap is judged against the timetable hours it overlaps, with the longest scheduled gap
+  (ADR-016). Tests first, from the live case.

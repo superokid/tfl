@@ -3,7 +3,7 @@
  * No I/O, no Date.now(). Mismatches need ≥ 2 agreeing stations and real (non-fallback) normal gaps.
  */
 import { FALLBACK_NORMAL_GAP_MIN, RULES, VEHICLE_NOUN } from '../config';
-import { analyseDirection, thresholdFor } from './gaps';
+import { analyseDirection, flatNorms, thresholdFor, usualGapText } from './gaps';
 import { serviceAt, type ServiceState } from './hours';
 import { activeStatuses, mapStatus, mostRestrictive } from './status';
 import type {
@@ -32,15 +32,18 @@ function stationEvidence(s: CheckStation, line: LineInput, now: number, throughO
     const ref = s.directions.find((d) => d.directionKey === key);
     const own = predictions.filter((p) => p.directionKey === key);
     const label = all.find((p) => p.directionKey === key)?.directionLabel ?? '';
-    const service: ServiceState = ref ? serviceAt(ref, now) : { kind: 'in', normalGapMin: null };
-    const normalGapMin = (service.kind === 'in' ? service.normalGapMin : null) ?? fallbackGap;
+    const service: ServiceState = ref ? serviceAt(ref, now) : { kind: 'in', normalGapMin: null, norms: null };
+    const timetable = service.kind === 'in' && service.normalGapMin !== null ? service : null;
+    const normalGapMin = timetable?.normalGapMin ?? fallbackGap;
+    const norms = timetable?.norms ?? flatNorms(normalGapMin);
     const base = {
       stopId: s.stopId,
       stationName: s.name,
       directionKey: key,
       directionLabel: label,
       normalGapMin,
-      normalGapIsFallback: !(service.kind === 'in' && service.normalGapMin !== null),
+      scheduledGapMin: normalGapMin,
+      normalGapIsFallback: timetable === null,
       thresholdMin: thresholdFor(normalGapMin),
     };
     const unusable = (issue: DirectionEvidence['issue']): DirectionEvidence => ({
@@ -56,7 +59,7 @@ function stationEvidence(s: CheckStation, line: LineInput, now: number, throughO
     if (service.kind === 'outside') return unusable('outside-hours');
     if (service.kind === 'edge') return unusable('day-edge');
     if (!s.arrivals.ok) return unusable(s.arrivals.failure);
-    const a = analyseDirection(own, now, normalGapMin);
+    const a = analyseDirection(own, now, normalGapMin, norms);
     return { ...base, ...a };
   });
 }
@@ -178,9 +181,9 @@ export function judgeLine(line: LineInput, now: number): LineVerdict {
     const worst = hiddenStrict
       .flatMap(usableOf)
       .filter((e) => gap(e) > e.thresholdMin && !e.normalGapIsFallback)
-      .reduce((a, b) => (gap(b) / b.normalGapMin > gap(a) / a.normalGapMin ? b : a));
+      .reduce((a, b) => (gap(b) / b.thresholdMin > gap(a) / a.thresholdMin ? b : a));
     const mins = Math.round(gap(worst));
-    const usual = Math.round(worst.normalGapMin);
+    const usual = usualGapText(worst);
     const dir = worst.directionLabel ? `${worst.directionLabel} ` : '';
     const start = Math.round(worst.gapStartMin ?? 0);
     const when = start <= 0 ? '' : `, starting in ${start} minute${start === 1 ? '' : 's'}`;

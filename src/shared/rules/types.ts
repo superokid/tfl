@@ -50,8 +50,21 @@ export interface ServiceBand {
   /** Minutes since local midnight of the service day; may exceed 1440 for after-midnight service. */
   fromMin: number;
   toMin: number;
+  /** Median scheduled gap between departures starting in this band. */
   normalGapMin: number;
+  /** Longest scheduled gap starting in this band. Trams in pairs (1 min, then 7) have a median of 4, but
+   * passengers routinely wait 7; the last trams of the night can be 15 apart. */
+  longestGapMin: number;
 }
+
+/** What the timetable leads a passenger to expect over a stretch of time. */
+export interface GapNorm {
+  normalGapMin: number;
+  longestGapMin: number;
+}
+
+/** The timetable's gaps for the stretch `fromMin`–`toMin` minutes after the check. */
+export type NormsOver = (fromMin: number, toMin: number) => GapNorm;
 
 export interface ServiceDay {
   /** First and last journey, minutes since local midnight of the service day (last may be ≥ 1440). */
@@ -115,10 +128,14 @@ export interface DirectionEvidence {
   stationName: string;
   directionKey: string;
   directionLabel: string;
+  /** Median scheduled gap where the reported gap falls (at the check, for an unusable direction). */
   normalGapMin: number;
+  /** Longest scheduled gap over that same stretch: what "usually" means to a passenger. */
+  scheduledGapMin: number;
   normalGapIsFallback: boolean;
+  /** Threshold for the reported gap, from the timetable over its own stretch. */
   thresholdMin: number;
-  /** Largest gap seen inside the window, or null if the direction is unusable. */
+  /** The gap furthest over (or closest to) its own threshold inside the window, or null if unusable. */
   observedGapMin: number | null;
   /** 'next' = now → first arrival; 'between' = two consecutive arrivals. */
   gapKind: 'next' | 'between' | null;

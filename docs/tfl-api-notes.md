@@ -51,6 +51,9 @@ Ealing Broadway. Tram stays "Service Closed" while its timetable runs to ~01:30.
   Holidays"; Tram "Monday to Friday", "Saturday"; Waterloo & City only "Monday - Friday" (no weekend service).
 - Night Tube lines (Piccadilly, Victoria, Central, Jubilee, Northern): Friday and Saturday run past 27:00, and
   the Saturday and Sunday schedules start ~03:15–04:35, continuing the night before.
+- Gaps are uneven where branches merge (checked 2026-11-09, Tram at East Croydon, Sunday): trams in pairs,
+  `1, 6, 1, 7…` by day (median 3.5–4, longest 7); the last outbound trams run 01:01, 01:02, 01:17 (15 min).
+  A median alone understates the wait; the reference keeps the longest gap too (ADR-016).
 - A schedule can go missing: on 2026-11-08 Piccadilly (Acton Town, Arnos Grove, both directions) came back
   without "Monday - Thursday"; on 2026-11-09 it was there (380 journeys). The generator retries once and drops
   a direction with any Mon–Fri day unmapped.

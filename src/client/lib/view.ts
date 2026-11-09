@@ -1,6 +1,7 @@
 /** Pure display logic (unit-tested; components stay thin). Plain words for passengers, no internal jargon. */
 import type { LineStatus } from '../../shared/api';
 import { LONDON_TZ, type Mode } from '../../shared/config';
+import { usualGapText } from '../../shared/rules/gaps';
 import { mapStatus } from '../../shared/rules/status';
 import type { DirectionEvidence, Expected, VerdictKind, VerdictReason } from '../../shared/rules/types';
 
@@ -236,7 +237,7 @@ export function evidenceText(e: DirectionEvidence): string {
     (e.directionKey.startsWith('platform:') ? e.directionKey.slice(9) : e.directionKey === '*' ? 'all directions' : e.directionKey);
   const dir = raw.charAt(0).toUpperCase() + raw.slice(1);
   if (!e.usable || e.observedGapMin === null) return `${dir}: ${e.issue ? ISSUE_TEXT[e.issue] : 'no data'}`;
-  const usual = `usually ${mins(e.normalGapMin)}${e.normalGapIsFallback ? ', estimated' : ''}`;
+  const usual = `usually ${usualGapText(e)} min${e.normalGapIsFallback ? ', estimated' : ''}`;
   const start = Math.round(e.gapStartMin ?? 0);
   const what =
     e.gapKind === 'next' ? `next in ${mins(e.observedGapMin)}` : `${mins(e.observedGapMin)} gap${start > 0 ? ` from ${start} min` : ''}`;

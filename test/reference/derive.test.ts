@@ -49,17 +49,31 @@ describe('scheduleWeekdays', () => {
 });
 
 describe('serviceDayFrom', () => {
-  it('hourly median gaps, merged when equal, with first and last departure', () => {
+  it('hourly median and longest gaps, merged when equal, with first and last departure', () => {
     // 05:00–06:59 every 10 min, then 07:00–07:59 every 3.
     const deps = [...Array.from({ length: 12 }, (_, i) => 300 + i * 10), ...Array.from({ length: 20 }, (_, i) => 420 + i * 3)];
     expect(serviceDayFrom(deps)).toEqual({
       firstMin: 300,
       lastMin: 477,
       bands: [
-        { fromMin: 300, toMin: 420, normalGapMin: 10 },
-        { fromMin: 420, toMin: 480, normalGapMin: 3 },
+        { fromMin: 300, toMin: 420, normalGapMin: 10, longestGapMin: 10 },
+        { fromMin: 420, toMin: 480, normalGapMin: 3, longestGapMin: 3 },
       ],
     });
+  });
+
+  it('keeps the longest gap: trams in pairs (1 min, then 6) have median 3.5 but passengers wait up to 6', () => {
+    // East Croydon, Sunday afternoon (live timetable, 9 Nov 2026): two branches merge, trams come in pairs.
+    const deps = Array.from({ length: 20 }, (_, i) => 600 + Math.floor(i / 2) * 7 + (i % 2));
+    expect(serviceDayFrom(deps)!.bands[0]).toEqual({ fromMin: 600, toMin: 660, normalGapMin: 3.5, longestGapMin: 6 });
+  });
+
+  it('hours with the same median but a longer gap stay separate (the last trams thin out)', () => {
+    // Sunday night outbound: every 6–8 min until 01:02, then 15 min to the last tram at 01:17.
+    const deps = [1380, 1386, 1394, 1400, 1408, 1414, 1422, 1428, 1436, 1442, 1450, 1456, 1461, 1462, 1477];
+    const bands = serviceDayFrom(deps)!.bands;
+    expect(bands.at(-1)).toMatchObject({ fromMin: 1440, toMin: 1500, longestGapMin: 15 });
+    expect(bands[0]).toMatchObject({ fromMin: 1380, toMin: 1440, longestGapMin: 8 });
   });
 
   it('needs at least two departures', () => {

@@ -26,7 +26,7 @@ export interface LineReport extends LineVerdict {
 }
 
 /** Bump when a stored shape changes: a stored snapshot of another version is ignored and refreshed. */
-export const SNAPSHOT_VERSION = 4;
+export const SNAPSHOT_VERSION = 5;
 export const LINES_VERSION = 3;
 
 /** One line on the home screen: TfL's status only (ADR-011). */

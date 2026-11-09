@@ -83,4 +83,37 @@ describe('analyseDirection (SPEC §5.2)', () => {
     const r = analyseDirection(p, now, 3);
     expect(r.observedGapMin).toBeCloseTo(5);
   });
+
+  it('threshold uses the timetable\'s longest gap: max(2 × median, longest + 5)', () => {
+    // Trams in pairs: median 4, but the timetable has 7-minute gaps.
+    const paired = () => ({ normalGapMin: 4, longestGapMin: 7 });
+    const r = analyseDirection(preds(now, [1, 2, 8, 9, 15, 16, 25.4, 26.4]), now, 4, paired);
+    expect(r).toMatchObject({ thresholdMin: 12, scheduledGapMin: 7 });
+    expect(r.observedGapMin).toBeCloseTo(9.4);
+  });
+
+  it('judges each gap by the timetable where it falls, not the one at the moment of the check', () => {
+    // Sunday 00:50: every 6–8 min now, but the timetable's own 15-min gap before the last tram starts in 12.
+    const thinning = (_from: number, to: number) =>
+      to > 10 ? { normalGapMin: 8, longestGapMin: 15 } : { normalGapMin: 6, longestGapMin: 8 };
+    const late = analyseDirection(preds(now, [3, 11, 12, 26]), now, 6, thinning);
+    expect(late.observedGapMin).toBeCloseTo(14);
+    expect(late).toMatchObject({ thresholdMin: 20, scheduledGapMin: 15, normalGapMin: 8 });
+    expect(late.observedGapMin!).toBeLessThanOrEqual(late.thresholdMin);
+
+    // The same 14-min wait where the timetable runs every 6–8 min is still over the threshold.
+    const dense = (_from: number, to: number) =>
+      to > 30 ? { normalGapMin: 8, longestGapMin: 15 } : { normalGapMin: 6, longestGapMin: 8 };
+    const early = analyseDirection(preds(now, [3, 17, 20, 23, 26]), now, 6, dense);
+    expect(early).toMatchObject({ thresholdMin: 13, gapStartMin: 3 });
+    expect(early.observedGapMin!).toBeGreaterThan(early.thresholdMin);
+  });
+
+  it('reports the gap furthest over its own threshold, not simply the longest', () => {
+    // 14 min (threshold 13) early on matters; 16 min later, where 15 is scheduled (threshold 20), doesn't.
+    const norms = (from: number) => (from >= 20 ? { normalGapMin: 8, longestGapMin: 15 } : { normalGapMin: 6, longestGapMin: 8 });
+    const r = analyseDirection(preds(now, [1, 15, 20, 36]), now, 6, norms);
+    expect(r).toMatchObject({ gapStartMin: 1, thresholdMin: 13 });
+    expect(r.observedGapMin).toBeCloseTo(14);
+  });
 });

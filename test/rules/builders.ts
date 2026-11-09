@@ -20,9 +20,9 @@ export const at = (base: number, minutes: number) => base + minutes * MIN;
 
 const ALL_DAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
-/** A service day running 05:30 → 00:30 with one flat normal gap. */
+/** A service day running 05:30 → 00:30 with one flat normal gap (evenly spaced: longest gap = median). */
 export function serviceDay(normalGapMin: number, firstMin = 330, lastMin = 1470): ServiceDay {
-  return { firstMin, lastMin, bands: [{ fromMin: firstMin, toMin: lastMin, normalGapMin }] };
+  return { firstMin, lastMin, bands: [{ fromMin: firstMin, toMin: lastMin, normalGapMin, longestGapMin: normalGapMin }] };
 }
 
 export function dirRef(

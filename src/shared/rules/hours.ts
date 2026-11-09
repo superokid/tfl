@@ -1,9 +1,14 @@
 /** Operating hours from the timetable reference: in service now, and when the first train runs next. Pure. */
 import { RULES } from '../config';
 import { londonClock } from './london';
-import type { DirectionRef, Weekday } from './types';
+import type { DirectionRef, NormsOver, ServiceBand, Weekday } from './types';
 
-export type ServiceState = { kind: 'in'; normalGapMin: number | null } | { kind: 'outside' } | { kind: 'edge' };
+/** In service: the median gap at `now` (null if the timetable has none), and the timetable's gaps over any
+ * stretch ahead, so each gap is judged where it falls (null with no band at `now`). */
+export type ServiceState =
+  | { kind: 'in'; normalGapMin: number | null; norms: NormsOver | null }
+  | { kind: 'outside' }
+  | { kind: 'edge' };
 
 /** Is this direction in service now? Checks today's service day and yesterday's after-midnight tail. */
 export function serviceAt(ref: DirectionRef, now: number): ServiceState {
@@ -17,9 +22,26 @@ export function serviceAt(ref: DirectionRef, now: number): ServiceState {
     if (!day || t < day.firstMin || t > day.lastMin) continue;
     if (t - day.firstMin < RULES.dayEdgeMin || day.lastMin - t < RULES.dayEdgeMin) return { kind: 'edge' };
     const band = day.bands.find((b) => b.fromMin <= t && t < b.toMin);
-    return { kind: 'in', normalGapMin: band?.normalGapMin ?? null };
+    if (!band) return { kind: 'in', normalGapMin: null, norms: null };
+    return { kind: 'in', normalGapMin: band.normalGapMin, norms: normsOver(day.bands, band, t) };
   }
   return { kind: 'outside' };
+}
+
+/**
+ * The largest median and longest gap among the bands a stretch overlaps (a gap crossing into a sparser
+ * hour is judged by the sparser one), or the band at the check if it overlaps none (after the last journey).
+ * Wall-clock minutes: a clock change inside the stretch is off by up to an hour, at 01:00–02:00 only.
+ */
+function normsOver(bands: ServiceBand[], atNow: ServiceBand, t: number): NormsOver {
+  return (fromMin, toMin) => {
+    const hit = bands.filter((b) => b.fromMin < t + toMin && t + fromMin < b.toMin);
+    const use = hit.length > 0 ? hit : [atNow];
+    return {
+      normalGapMin: Math.max(...use.map((b) => b.normalGapMin)),
+      longestGapMin: Math.max(...use.map((b) => b.longestGapMin)),
+    };
+  };
 }
 
 /** Epoch ms of London clock time `minuteOfDay`, `dayOffset` London days after `now`'s. DST-safe. */

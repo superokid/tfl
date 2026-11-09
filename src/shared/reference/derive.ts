@@ -126,7 +126,10 @@ const median = (xs: number[]) => {
 };
 const half = (x: number) => Math.round(x * 2) / 2;
 
-/** Departures (minutes since service-day midnight) → service day with hourly median-gap bands, merged. */
+/**
+ * Departures (minutes since service-day midnight) → service day with hourly bands of the median and the
+ * longest gap, merged when both are equal.
+ */
 export function serviceDayFrom(departures: number[]): ServiceDay | null {
   const d = [...new Set(departures)].sort((a, b) => a - b);
   if (d.length < 2) return null;
@@ -137,10 +140,12 @@ export function serviceDayFrom(departures: number[]): ServiceDay | null {
   }
   const bands: ServiceBand[] = [];
   for (const h of [...byHour.keys()].sort((a, b) => a - b)) {
-    const gap = half(median(byHour.get(h)!));
+    const gaps = byHour.get(h)!;
+    const gap = half(median(gaps));
+    const longest = Math.max(...gaps);
     const last = bands[bands.length - 1];
-    if (last && last.toMin === h * 60 && last.normalGapMin === gap) last.toMin = (h + 1) * 60;
-    else bands.push({ fromMin: h * 60, toMin: (h + 1) * 60, normalGapMin: gap });
+    if (last && last.toMin === h * 60 && last.normalGapMin === gap && last.longestGapMin === longest) last.toMin = (h + 1) * 60;
+    else bands.push({ fromMin: h * 60, toMin: (h + 1) * 60, normalGapMin: gap, longestGapMin: longest });
   }
   return { firstMin: d[0]!, lastMin: d[d.length - 1]!, bands };
 }

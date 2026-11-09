@@ -31,6 +31,7 @@ const ev = (over: Partial<DirectionEvidence>): DirectionEvidence => ({
   directionKey: 'outbound',
   directionLabel: 'southbound',
   normalGapMin: 3,
+  scheduledGapMin: 3,
   normalGapIsFallback: false,
   thresholdMin: 8,
   observedGapMin: 14,
@@ -167,6 +168,8 @@ describe('evidence', () => {
       'Southbound: 12 min gap from 7 min (usually 3 min, estimated)',
     );
     expect(evidenceText(ev({ usable: false, issue: 'frozen', observedGapMin: null }))).toBe('Southbound: predictions not updating');
+    // Trams in pairs: median 4, but the timetable itself has 7-minute gaps.
+    expect(evidenceText(ev({ normalGapMin: 4, scheduledGapMin: 7 }))).toBe('Southbound: next in 14 min (usually up to 7 min)');
   });
 });
 

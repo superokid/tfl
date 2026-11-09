@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { judgeLine } from '../../src/shared/rules/verdict';
-import type { Weekday } from '../../src/shared/rules/types';
+import type { ServiceDay, Weekday } from '../../src/shared/rules/types';
 import {
   at,
   dirRef,
@@ -364,6 +364,51 @@ describe('CLOSED and operating hours', () => {
   it('DST: 01:30 BST in summer is outside hours on a weekday', () => {
     const bstNight = Date.UTC(2026, 6, 15, 0, 30); // 01:30 BST, Wed
     expect(judgeLine(twoStations([], []), bstNight).verdict).toBe('CLOSED');
+  });
+});
+
+describe('trams: judged against the timetable at the time of each gap (live, East Croydon, Nov 2026)', () => {
+  // Sunday outbound at East Croydon, from TfL's timetable: trams in pairs (1 min, then up to 8) until
+  // 01:02, then 15 min to the last tram at 01:17.
+  const sunday: ServiceDay = {
+    firstMin: 422,
+    lastMin: 1517,
+    bands: [
+      { fromMin: 600, toMin: 1080, normalGapMin: 4, longestGapMin: 7 },
+      { fromMin: 1080, toMin: 1500, normalGapMin: 6, longestGapMin: 8 },
+      { fromMin: 1500, toMin: 1560, normalGapMin: 8, longestGapMin: 15 },
+    ],
+  };
+  const tram = (at: number, minutes: number[]) =>
+    line(
+      [status('Good Service')],
+      ['East Croydon', 'Sandilands'].map((name) =>
+        station(name, ok(preds(at, minutes)), [dirRef('outbound', 6, [0], sunday)]),
+      ),
+      'tram',
+    );
+
+  it("00:50: a 14-min gap before the last tram is TfL's own timetable, not a disruption", () => {
+    const night = Date.UTC(2026, 10, 9, 0, 50); // Monday 00:50 GMT, still Sunday's service
+    expect(judgeLine(tram(night, [3, 11, 12, 26]), night).verdict).toBe('MATCH');
+  });
+
+  it('20:00: the same 14-min gap where trams run every 6–8 min is flagged', () => {
+    const evening = Date.UTC(2026, 10, 8, 20, 0);
+    expect(judgeLine(tram(evening, [3, 17, 20, 26, 32]), evening).verdict).toBe('HIDDEN_DISRUPTION');
+  });
+
+  it('14:00: a 9.4-min gap between paired trams (median 4, longest 7) is normal', () => {
+    const afternoon = Date.UTC(2026, 10, 8, 14, 0);
+    expect(judgeLine(tram(afternoon, [1, 2, 8, 9, 15, 16, 25.4, 26.4, 32, 33]), afternoon).verdict).toBe('MATCH');
+  });
+
+  it('14:00: a 13-min gap is flagged, against "usually up to 7"', () => {
+    const afternoon = Date.UTC(2026, 10, 8, 14, 0);
+    const v = judgeLine(tram(afternoon, [1, 2, 8, 9, 22, 23, 29, 30]), afternoon);
+    expect(v.verdict).toBe('HIDDEN_DISRUPTION');
+    expect(v.summary).toContain('13-minute gap between southbound trams at East Croydon');
+    expect(v.summary).toContain('(usually up to 7)');
   });
 });
 

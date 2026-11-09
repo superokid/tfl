@@ -74,7 +74,8 @@ D1 snapshot (shared, outage fallback) · HTTP cache · `localStorage` (last good
 
 - `bun run reference` writes `src/shared/reference/rail.json` from the live API: lines, 2 check stations per
   line (route sequence; coverage weighted by route length, ≥ 2 stops from the ends where possible, spread
-  apart), and per station × direction the departures timetable → service hours and hourly median gaps.
+  apart), and per station × direction the departures timetable → service hours and, per hour, the median
+  and longest scheduled gap ([ADR-016](adr/016-judge-each-gap-by-its-own-timetable.md)).
 - Also learns platform compass word → direction from a sample of arrivals.
 - TfL has no timetables for the Elizabeth line and Overground (404, even via its own disambiguation links):
   those lines use the per-mode fallback gap, so they can match or be "Can't verify", never flagged.
@@ -114,9 +115,11 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
   the direction is unusable.
 - **Horizon:** the furthest prediction.
 - **Window:** 30 min if normal gap ≤ 5 min, else 60 min, cut to the horizon.
-- **Gap:** largest interval of now → first arrival and consecutive arrivals. Never after the last
-  prediction.
-- **Threshold:** `max(2 × normal, normal + 5 min)`.
+- **Gap:** each interval of now → first arrival and consecutive arrivals. Never after the last
+  prediction. The one furthest over its threshold is reported.
+- **Threshold:** per gap, from the timetable hours that gap overlaps (largest median = *normal*, longest
+  scheduled gap = *longest*): `max(2 × normal, longest + 5 min)`. Evenly spaced, longest = normal.
+  The window and horizon use the normal gap at the moment of the check ([ADR-016](adr/016-judge-each-gap-by-its-own-timetable.md)).
 - **Usable direction:** ≥ 1 prediction, and horizon ≥ 2 × normal or a gap over the threshold was seen.
   No predictions = unusable.
 - **Day edges:** within 20 min of the first or last journey → `CANT_VERIFY`.
@@ -138,9 +141,9 @@ All numbers in `src/shared/config.ts`; tuning recorded in `docs/verification.md`
 | `CLOSED` | Expected `CLOSED`, or outside timetable hours. Never a mismatch. Reason `outside-hours` when every check direction is outside timetable hours, else `planned-closure`. |
 
 - Ghost and boundary trains during a suspension: seen live in Phase 1 and ruled out (§5.2).
-- Evidence: station, direction, normal gap (and whether it's a fallback), observed gap, horizon,
-  time, and a sentence: *"TfL says Good Service, but the next southbound train at Euston is
-  14 minutes away (usually 3)."*
+- Evidence: station, direction, normal and longest scheduled gap (and whether it's a fallback), observed
+  gap, horizon, time, and a sentence: *"TfL says Good Service, but the next southbound train at Euston is
+  14 minutes away (usually 3)."* When the timetable's longest gap exceeds its median: *"(usually up to 7)"*.
 
 ## 6. UI ([ADR-011](adr/011-fetch-per-screen.md))
 

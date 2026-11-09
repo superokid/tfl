@@ -34,7 +34,10 @@ describe('generated rail reference (src/shared/reference/rail.json)', () => {
         for (const d of s.directions) {
           for (const day of d.serviceDays) {
             expect(day.firstMin).toBeLessThan(day.lastMin);
-            for (const b of day.bands) expect(b.normalGapMin).toBeGreaterThan(0);
+            for (const b of day.bands) {
+              expect(b.normalGapMin).toBeGreaterThan(0);
+              expect(b.longestGapMin).toBeGreaterThanOrEqual(b.normalGapMin);
+            }
           }
           for (const w of d.weekdays) expect(w).toBeLessThan(d.serviceDays.length);
         }

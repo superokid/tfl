@@ -1,5 +1,5 @@
 import type { ErrorBody, HealthBody } from '../shared/api';
-import { LINES_VERSION, SNAPSHOT_VERSION, type IndexBody, type LinesSnapshot, type Snapshot } from '../shared/api';
+import { CHECK_TABS, LINES_VERSION, SNAPSHOT_VERSION, type IndexBody, type LinesSnapshot, type Snapshot } from '../shared/api';
 import { BUSES, RAIL_REFERENCE, STATIONS } from '../shared/reference/load';
 import { EdgeJsonCache, handleBusRoute, handleBusSearch } from './bus';
 import { isBot } from './bots';
@@ -8,7 +8,7 @@ import { json } from './http';
 import { EdgeStationCache, handleStation, onDemandLimiter } from './station';
 import { handleLine } from './line';
 import { handleNearby } from './nearby';
-import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore, sharedLineStatuses } from './status';
+import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore, handleTabChecks, handleTabChecksWithoutStore, sharedLineStatuses } from './status';
 import { D1Store } from './store';
 import { createTflClient } from './tfl/client';
 
@@ -69,7 +69,25 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     return json(body, { headers: { 'Cache-Control': 'no-store' } });
   }
 
-  // Home screen: statuses only. Check-all: only when the user taps it (ADR-011).
+  // Home screen: statuses (ADR-011), then the open tab's live checks (ADR-017). Check-all: by hand only.
+  const tabMatch = /^\/api\/checks\/([a-z-]{2,20})$/.exec(url.pathname);
+  if (tabMatch) {
+    const tab = CHECK_TABS.find((t) => t === tabMatch[1]);
+    if (!tab) return json({ error: 'unknown_tab' } satisfies ErrorBody, { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    if (!env.TFL_APP_KEY) {
+      return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const now = Date.now();
+    const tfl = () => createTflClient(env.TFL_APP_KEY);
+    const waitUntil = (p: Promise<unknown>) => ctx.waitUntil(p);
+    try {
+      return await handleTabChecks({ store: new D1Store<Snapshot>(env.DB, `checks:${tab}`, SNAPSHOT_VERSION), tfl, reference: RAIL_REFERENCE, now, waitUntil, tab });
+    } catch (err) {
+      console.error('store unavailable, calling TfL directly:', redact(err instanceof Error ? err.message : String(err)));
+      return handleTabChecksWithoutStore(tfl, RAIL_REFERENCE, tab, now);
+    }
+  }
+
   if (url.pathname === '/api/lines' || url.pathname === '/api/checks') {
     if (!env.TFL_APP_KEY) {
       return json({ error: 'not_configured' } satisfies ErrorBody, { status: 503, headers: { 'Cache-Control': 'no-store' } });
@@ -77,11 +95,10 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     const now = Date.now();
     const tfl = () => createTflClient(env.TFL_APP_KEY);
     const waitUntil = (p: Promise<unknown>) => ctx.waitUntil(p);
-    const checks = new D1Store<Snapshot>(env.DB, 'checks', SNAPSHOT_VERSION);
     try {
       return url.pathname === '/api/lines'
-        ? await handleLines({ store: new D1Store<LinesSnapshot>(env.DB, 'lines', LINES_VERSION), checks, tfl, reference: RAIL_REFERENCE, now, waitUntil })
-        : await handleStatus({ store: checks, tfl, reference: RAIL_REFERENCE, now, waitUntil });
+        ? await handleLines({ store: new D1Store<LinesSnapshot>(env.DB, 'lines', LINES_VERSION), tfl, reference: RAIL_REFERENCE, now, waitUntil })
+        : await handleStatus({ store: new D1Store<Snapshot>(env.DB, 'checks', SNAPSHOT_VERSION), tfl, reference: RAIL_REFERENCE, now, waitUntil });
     } catch (err) {
       console.error('store unavailable, calling TfL directly:', redact(err instanceof Error ? err.message : String(err)));
       return url.pathname === '/api/lines'

@@ -57,17 +57,26 @@ export interface LinesSnapshot {
   statuses: Record<string, StatusInput[]>;
 }
 
-/** The latest "Check all lines" result, if recent: verdicts only. */
-export interface CheckSummary {
+/** Home tabs whose lines are checked together (ADR-017). The Bus tab has its own data. */
+export const CHECK_TABS = ['tube', 'elizabeth-line', 'overground', 'dlr', 'tram'] as const;
+export type CheckTab = (typeof CHECK_TABS)[number];
+
+/** The cable car sits with the tram: both are small, separate services. */
+export const checkTabOf = (mode: Exclude<Mode, 'bus'>): CheckTab => (mode === 'cable-car' ? 'tram' : mode);
+
+/** GET /api/checks/:tab: the live check of one home tab's lines, verdicts only (ADR-017). */
+export interface TabChecksBody {
+  tab: CheckTab;
   checkedAt: number;
+  serverNow: number;
+  stale: boolean;
   lines: Record<string, { verdict: VerdictKind; reason: VerdictReason | null; summary: string }>;
 }
 
-/** GET /api/lines (home screen). */
+/** GET /api/lines (home screen): TfL's statuses only. */
 export interface LinesBody extends Omit<LinesSnapshot, 'statuses'> {
   serverNow: number;
   stale: boolean;
-  checks: CheckSummary | null;
 }
 
 /** GET /api/line/:id (line screen). */
@@ -76,7 +85,7 @@ export interface LineBody extends LineReport {
   stale: boolean;
 }
 
-/** What is stored in D1 and served by /api/checks. */
+/** What is stored in D1: every line (`/api/checks`) or one home tab's (`/api/checks/:tab`). */
 export interface Snapshot {
   version: number;
   /** When TfL was last read successfully (epoch ms). */
@@ -238,11 +247,20 @@ const isReport = (l: unknown) =>
   list(l.boards, isBoard) &&
   list(l.evidence, (e) => has(e, str, 'stationName', 'directionKey', 'directionLabel'));
 
+export function isTabChecksBody(v: unknown): v is TabChecksBody {
+  return (
+    obj(v) &&
+    live(v) &&
+    CHECK_TABS.includes(v.tab as CheckTab) &&
+    obj(v.lines) &&
+    Object.values(v.lines).every((l) => has(l, str, 'summary') && VERDICTS.includes(l.verdict as VerdictKind) && strOrNull(l.reason))
+  );
+}
+
 export function isLinesBody(v: unknown): v is LinesBody {
   return (
     obj(v) &&
     live(v) &&
-    (v.checks === null || v.checks === undefined || (obj(v.checks) && obj(v.checks.lines))) &&
     list(v.lines, (l) => has(l, str, 'lineId', 'lineName', 'tflSays', 'mode') && strOrNull(l.severity) && strs(l.messages) && optNumOrNull(l.opensAt) && optBool(l.offHours))
   );
 }

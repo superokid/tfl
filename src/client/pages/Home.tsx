@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NEAR_LINES } from '../../shared/config';
-import { isLinesBody, type LineStatus } from '../../shared/api';
+import { isLinesBody, isTabChecksBody, type LineStatus } from '../../shared/api';
 import type { VerdictKind } from '../../shared/rules/types';
 import { lineColour } from '../lib/lineColours';
 import { useLive, useServerNow } from '../hooks/live';
@@ -30,6 +30,9 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
   // The Bus tab has its own data: rail statuses aren't fetched while it's open.
   const rail = tab !== 'bus';
   const live = useLive(rail ? '/api/lines' : null, isLinesBody, { paused: idle, saveAs: 'tfl:lines' });
+  // The open tab's live checks (ADR-017): fetched alongside the statuses, never saved on the device (an
+  // old verdict misleads). Shared on the server, so many viewers cost TfL no more than one.
+  const checked = useLive(rail ? `/api/checks/${tab}` : null, isTabChecksBody, { paused: idle });
   const now = useServerNow(live.data, live.receivedAt);
   const setTab = (t: Tab) => {
     setTabState(t);
@@ -40,8 +43,9 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
     }
   };
 
-  // Verdicts come from per-line checks anyone ran in the last 10 min (ADR-011).
-  const checks = live.data?.checks ?? null;
+  const checks = checked.data?.tab === tab ? checked.data : null;
+  /** Nothing while the first check loads; afterwards a line without a verdict says it wasn't checked. */
+  const verdictOf = (lineId: string) => checks?.lines[lineId]?.verdict ?? (checks || checked.error ? 'unchecked' : undefined);
 
   const age = live.data && now !== null ? now - live.data.checkedAt : null;
   const stale = !!live.data && (live.data.stale || live.source === 'device' || (age ?? 0) > 120_000);
@@ -114,7 +118,7 @@ export function Home({ saved, idle }: { saved: SavedItem[]; idle: boolean }) {
               <ul className="lines">
                 {shown.map((l) => (
                   <li key={l.lineId}>
-                    <LineRow line={l} verdict={checks?.lines[l.lineId]?.verdict} now={now ?? live.data!.checkedAt} />
+                    <LineRow line={l} verdict={verdictOf(l.lineId)} now={now ?? live.data!.checkedAt} />
                   </li>
                 ))}
               </ul>
@@ -154,7 +158,7 @@ function NearNote({ where, index, near, tabLabel }: { where: Where; index: unkno
 
 const isAlert = (v: VerdictKind | undefined) => v === 'HIDDEN_DISRUPTION' || v === 'STALE_ALERT';
 
-function LineRow({ line, verdict, now }: { line: LineStatus; verdict: VerdictKind | undefined; now: number }) {
+function LineRow({ line, verdict, now }: { line: LineStatus; verdict: VerdictKind | 'unchecked' | undefined; now: number }) {
   const note = rowNote(verdict);
   const reason = rowReason(line);
   return (

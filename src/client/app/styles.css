@@ -162,6 +162,7 @@ h1 { font-size: 1.35rem; letter-spacing: -0.01em; }
 .note { font-size: 0.82rem; }
 .note-alert { color: var(--closed); font-weight: 600; }
 .note-ok { color: var(--good); }
+.note-muted { color: var(--muted); }
 
 
 /* Bus tab */

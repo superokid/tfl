@@ -1,5 +1,5 @@
 /** Pure display logic (unit-tested; components stay thin). Plain words for passengers, no internal jargon. */
-import type { LineStatus } from '../../shared/api';
+import { checkTabOf, type CheckTab, type LineStatus } from '../../shared/api';
 import { LONDON_TZ, type Mode } from '../../shared/config';
 import { usualGapText } from '../../shared/rules/gaps';
 import { mapStatus } from '../../shared/rules/status';
@@ -7,7 +7,7 @@ import type { DirectionEvidence, Expected, VerdictKind, VerdictReason } from '..
 
 // ── Modes ───────────────────────────────────────────────────────────────────────────────────────────
 
-export type Tab = 'tube' | 'elizabeth-line' | 'overground' | 'dlr' | 'tram' | 'bus';
+export type Tab = CheckTab | 'bus';
 
 export const TABS: { id: Tab; label: string }[] = [
   { id: 'tube', label: 'Tube' },
@@ -18,8 +18,7 @@ export const TABS: { id: Tab; label: string }[] = [
   { id: 'bus', label: 'Bus' },
 ];
 
-/** The cable car sits with the tram: both are small, separate services. */
-export const tabOf = (mode: Mode): Tab => (mode === 'cable-car' ? 'tram' : mode === 'bus' ? 'bus' : mode);
+export const tabOf = (mode: Mode): Tab => (mode === 'bus' ? 'bus' : checkTabOf(mode));
 
 // ── Status ──────────────────────────────────────────────────────────────────────────────────────────
 
@@ -109,7 +108,11 @@ export interface CheckNote {
 }
 
 /** Short note for a list row; null when it adds nothing (can't check, closed). */
-export function rowNote(verdict: VerdictKind | undefined): CheckNote | null {
+/**
+ * The live check on a home row. `undefined`: still loading (nothing shown yet). `unchecked`: no result for
+ * this line. A line that couldn't be checked says so: TfL's status alone must never look confirmed.
+ */
+export function rowNote(verdict: VerdictKind | 'unchecked' | undefined): CheckNote | null {
   switch (verdict) {
     case 'HIDDEN_DISRUPTION':
       return { tone: 'alert', text: 'Live trains: longer waits than TfL says' };
@@ -117,6 +120,9 @@ export function rowNote(verdict: VerdictKind | undefined): CheckNote | null {
       return { tone: 'alert', text: 'Live trains: running, status may be out of date' };
     case 'MATCH':
       return { tone: 'ok', text: 'Live trains match' };
+    case 'CANT_VERIFY':
+    case 'unchecked':
+      return { tone: 'muted', text: 'Live trains not checked' };
     default:
       return null;
   }

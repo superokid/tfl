@@ -1,13 +1,36 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isLineBody, isLinesBody, isStatusBody, LINES_VERSION, type LinesBody, type LinesSnapshot, type Snapshot, type StatusBody } from '../../src/shared/api';
+import {
+  isLineBody,
+  isLinesBody,
+  isStatusBody,
+  isTabChecksBody,
+  LINES_VERSION,
+  type LinesBody,
+  type LinesSnapshot,
+  type Snapshot,
+  type StatusBody,
+  type TabChecksBody,
+} from '../../src/shared/api';
 import { MemoryJsonCache } from '../../src/worker/bus';
 import { handleLine } from '../../src/worker/line';
 import { CallLimiter } from '../../src/worker/station';
 import { LIVE } from '../../src/shared/config';
 import { RAIL_REFERENCE } from '../../src/shared/reference/load';
 import { buildSnapshot } from '../../src/worker/refresh';
-import { handleLines, handleLinesWithoutStore, handleStatus, handleStatusWithoutStore, plannedCalls, resetMemoForTests, sharedLineStatuses, type StatusDeps } from '../../src/worker/status';
+import {
+  handleLines,
+  handleLinesWithoutStore,
+  handleStatus,
+  handleStatusWithoutStore,
+  handleTabChecks,
+  handleTabChecksWithoutStore,
+  plannedCalls,
+  resetMemoForTests,
+  sharedLineStatuses,
+  tabReference,
+  type StatusDeps,
+} from '../../src/worker/status';
 import { MemoryStore } from '../../src/worker/store';
 import { createTflClient } from '../../src/worker/tfl/client';
 
@@ -246,7 +269,7 @@ describe('fetch only what the screen needs (ADR-011)', () => {
   it('home screen: statuses only, at most 2 TfL calls, no arrivals', async () => {
     const tfl = fakeTfl();
     const store = new MemoryStore<LinesSnapshot>(LINES_VERSION);
-    const res = await handleLines({ store, checks: null, tfl: tfl.client, reference: RAIL_REFERENCE, now: NOW, waitUntil: () => {} });
+    const res = await handleLines({ store, tfl: tfl.client, reference: RAIL_REFERENCE, now: NOW, waitUntil: () => {} });
     const b: unknown = await res.json();
     expect(isLinesBody(b)).toBe(true);
     expect(tfl.seen.length).toBeLessThanOrEqual(2);
@@ -276,13 +299,10 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     expect(await sharedLineStatuses({ ...d, store: new MemoryStore<LinesSnapshot>(LINES_VERSION), tfl: fakeTfl('down').client })).toBeNull();
   });
 
-  it('home screen shows a recent check-all result, never an old one', async () => {
-    const checks = await seeded(NOW - 60_000);
+  it('home screen: no verdicts in the statuses response (the open tab is checked separately)', async () => {
     const store = new MemoryStore<LinesSnapshot>(LINES_VERSION);
-    const run = async (now: number) =>
-      (await (await handleLines({ store, checks, tfl: fakeTfl().client, reference: RAIL_REFERENCE, now, waitUntil: () => {} })).json()) as LinesBody;
-    expect((await run(NOW)).checks?.lines.victoria).toBeDefined();
-    expect((await run(NOW + 11 * 60_000)).checks).toBeNull();
+    const b = await (await handleLines({ store, tfl: fakeTfl().client, reference: RAIL_REFERENCE, now: NOW, waitUntil: () => {} })).json();
+    expect(b).not.toHaveProperty('checks');
   });
 
   it('line screen: one line, its own stops only, cached and shared', async () => {
@@ -311,5 +331,77 @@ describe('fetch only what the screen needs (ADR-011)', () => {
     await handleStatus(deps(new MemoryStore<Snapshot>(), all).d);
     expect(all.arrivalsDuringStatus).toBe(LIVE.concurrency - 1);
     expect(all.seen.length).toBeLessThanOrEqual(LIVE.maxCallsPerRefresh);
+  });
+});
+
+describe('home tab checks: only the open tab\'s lines, shared by everyone (ADR-017)', () => {
+  beforeEach(() => vi.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetMemoForTests();
+  });
+
+  const tabDeps = (store: MemoryStore<Snapshot>, tfl: ReturnType<typeof fakeTfl>, tab: TabChecksBody['tab'], now = NOW) => ({
+    ...deps(store, tfl, now).d,
+    tab,
+  });
+  const tabLines = (tab: TabChecksBody['tab']) => tabReference(RAIL_REFERENCE, tab).lines;
+  const tabStops = (tab: TabChecksBody['tab']) =>
+    new Set(tabLines(tab).filter((l) => !l.statusOnly).flatMap((l) => l.stations.map((s) => s.stopId)));
+
+  it('Tube tab: verdicts for Tube lines only, arrivals at their check stops only, within the call budget', async () => {
+    const tfl = fakeTfl();
+    const res = await handleTabChecks(tabDeps(new MemoryStore<Snapshot>(), tfl, 'tube'));
+    const b: unknown = await res.json();
+    expect(isTabChecksBody(b)).toBe(true);
+    const body = b as TabChecksBody;
+    expect(body.tab).toBe('tube');
+    expect(Object.keys(body.lines).sort()).toEqual(tabLines('tube').map((l) => l.lineId).sort());
+    const arrivals = tfl.seen.filter((u) => u.includes('/Arrivals'));
+    expect(arrivals).toHaveLength(tabStops('tube').size);
+    expect(arrivals.every((u) => [...tabStops('tube')].some((id) => u.includes(id)))).toBe(true);
+    expect(tfl.seen.length).toBeLessThanOrEqual(LIVE.maxCallsPerRefresh);
+    // Verdicts only: no boards or evidence, so the response stays small.
+    expect(body.lines.victoria).toEqual({ verdict: expect.any(String), reason: expect.anything(), summary: expect.any(String) });
+  });
+
+  it('Tram tab: the tram is checked, the cable car (no predictions) costs no arrivals call', async () => {
+    const tfl = fakeTfl();
+    const body = (await (await handleTabChecks(tabDeps(new MemoryStore<Snapshot>(), tfl, 'tram'))).json()) as TabChecksBody;
+    expect(Object.keys(body.lines).sort()).toEqual(['london-cable-car', 'tram']);
+    expect(body.lines['london-cable-car']?.reason).toBe('status-only');
+    expect(tfl.seen.filter((u) => u.includes('/Arrivals'))).toHaveLength(tabStops('tram').size);
+  });
+
+  it('one refresh per tab, shared: a second viewer within 30 s costs no TfL call', async () => {
+    const store = new MemoryStore<Snapshot>();
+    const tfl = fakeTfl();
+    await handleTabChecks(tabDeps(store, tfl, 'tube'));
+    const calls = tfl.seen.length;
+    await Promise.all(Array.from({ length: 10 }, () => handleTabChecks(tabDeps(store, tfl, 'tube', NOW + 5_000))));
+    expect(tfl.seen).toHaveLength(calls);
+  });
+
+  it('TfL down with nothing stored → 503, never an empty "all fine"', async () => {
+    const res = await handleTabChecks(tabDeps(new MemoryStore<Snapshot>(), fakeTfl('down'), 'tube'));
+    expect(res.status).toBe(503);
+  });
+
+  it('D1 unavailable: calls TfL directly for that tab, memoised briefly', async () => {
+    const tfl = fakeTfl();
+    await handleTabChecksWithoutStore(tfl.client, RAIL_REFERENCE, 'dlr', NOW);
+    const calls = tfl.seen.length;
+    const b: unknown = await (await handleTabChecksWithoutStore(tfl.client, RAIL_REFERENCE, 'dlr', NOW + 5_000)).json();
+    expect(isTabChecksBody(b)).toBe(true);
+    expect(tfl.seen).toHaveLength(calls);
+    // Another tab isn't served from the DLR's memo.
+    const tram = (await (await handleTabChecksWithoutStore(tfl.client, RAIL_REFERENCE, 'tram', NOW + 5_000)).json()) as TabChecksBody;
+    expect(tram.tab).toBe('tram');
+  });
+
+  it('every tab fits the per-refresh call budget', () => {
+    for (const tab of ['tube', 'elizabeth-line', 'overground', 'dlr', 'tram'] as const) {
+      expect(tabStops(tab).size + 1, tab).toBeLessThanOrEqual(LIVE.maxCallsPerRefresh);
+    }
   });
 });

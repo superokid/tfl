@@ -1,4 +1,4 @@
-import { SNAPSHOT_VERSION } from '../shared/api';
+import { SNAPSHOT_VERSION, type CheckTab } from '../shared/api';
 /**
  * Keyed snapshots ("lines", "checks") with a refresh lease each (ADR-002/006/009/011). The D1 implementation is the real one; MemoryStore has the
  * same semantics for tests. A successful refresh costs 2 D1 row writes: the lease and the snapshot.
@@ -15,7 +15,7 @@ export interface StoredSnapshot<S extends Versioned = Versioned> {
   failedAt: number | null;
 }
 
-/** One keyed snapshot ("lines" or "checks") with its own lease. */
+/** One keyed snapshot ("lines", "checks" or "checks:<tab>") with its own lease. */
 export interface Store<S extends Versioned = Versioned> {
   read(): Promise<StoredSnapshot<S>>;
   /** Atomically take the refresh lease if it has expired. Only the winner refreshes. */
@@ -29,7 +29,7 @@ export interface Store<S extends Versioned = Versioned> {
 export class D1Store<S extends Versioned> implements Store<S> {
   constructor(
     private readonly db: D1Database,
-    private readonly key: 'lines' | 'checks',
+    private readonly key: 'lines' | 'checks' | `checks:${CheckTab}`,
     private readonly version: number,
   ) {}
 

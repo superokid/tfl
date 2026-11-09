@@ -42,9 +42,10 @@ outcome, a false alarm the next worst.
 
 | Screen | Endpoint | TfL calls | Cache |
 |---|---|---|---|
-| Home | `/api/lines`: statuses (+ recent check verdicts) | 1–2 | D1 snapshot `lines` |
+| Home | `/api/lines`: statuses | 1–2 | D1 snapshot `lines` |
+| Home, open tab | `/api/checks/:tab`: verdicts for that tab's lines ([ADR-017](adr/017-home-checks-the-open-tab.md)) | 2 + check stops (Tube ≤ 24) | D1 snapshot `checks:<tab>` |
 | Line | `/api/line/:id`: live check + next trains | check stops (+1 if the `lines` snapshot is > 90 s old, ADR-015) | edge 30 s; 30–90 s served, refreshed in background |
-| Check every line | `/api/checks`: all verdicts, on request; no UI button | ~42 | D1 snapshot `checks` |
+| Check every line | `/api/checks`: all verdicts, for verification by hand; no screen calls it | ~42 | D1 snapshot `checks` |
 | Station / bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route | `/api/bus/:route`: status + every stop with next buses | 2 (+2 stop order, cached a day) | edge 30 s |
 | Bus stop search | `/api/search?q=` (≥ 3 chars) | 1 | edge 1 day |
@@ -154,9 +155,10 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 - **Saved:** lines, stations, stops and routes as one-tap chips (device only).
 - **Home:** mode tabs (Tube · Elizabeth line · Overground · DLR · Tram · Bus; they wrap, never hidden). Lines as
   TfL lists them: problems first, then A–Z; status in plain words with an icon, and TfL's reason (2 lines)
-  under a line with a problem. Live-check note only when
-  it adds something ("Live trains: longer waits than TfL says", "Live trains match"). Alerts on top for
-  mismatches. "Lines near me" filters a rail tab to the lines at the closest stations, computed on the phone
+  under a line with a problem. The open tab's lines are checked when it's opened; each row says what was
+  found ("Live trains: longer waits than TfL says", "Live trains match", or, muted, "Live trains not
+  checked"), so TfL's status never looks confirmed when it isn't ([ADR-017](adr/017-home-checks-the-open-tab.md)).
+  Alerts on top for mismatches. "Lines near me" filters a rail tab to the lines at the closest stations, computed on the phone
   ([ADR-013](adr/013-rail-lines-near-you.md)).
 - **Closed outside hours** (TfL says closed and the timetable has no service now, or TfL's message says
   "Service will resume"): routine, not a problem. Calm tone and ☾ icon, "Closed · opens about 05:30", sorted
@@ -177,7 +179,7 @@ Passenger-first: "Is my line OK?" and "When's my next train or bus?"
 - AA contrast, colour never the only signal, 320 px. One light theme whatever the browser's setting. No TfL logo; "Powered by TfL Open Data".
 
 ### Free-tier footprint ([ADR-009](adr/009-free-tier-footprint.md))
-Refresh ≤ every 30 s, 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client
+Refresh ≤ every 30 s per snapshot (`lines`, and each open home tab's checks), 2 D1 writes each; station lookups cached 30 s with an in-memory limit; the client
 polls every 60 s, never refetches within 30 s unless the user taps Refresh, and stops after 10 min idle.
 
 ## 7. Tests and CI

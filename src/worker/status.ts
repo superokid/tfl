@@ -2,9 +2,10 @@
  * Snapshot endpoints (SPEC §4.1, ADR-006/009/011): stale-while-revalidate over a keyed D1 snapshot.
  * Most requests are one D1 read; only the lease winner calls TfL, at most once per 30 s per snapshot.
  * - GET /api/lines: statuses for the home screen (1–2 TfL calls per refresh).
- * - GET /api/checks: every line's live check, only when the user asks (~42 calls per refresh).
+ * - GET /api/checks/:tab: the live check of one home tab's lines (ADR-017; Tube ≤ 23 calls per refresh).
+ * - GET /api/checks: every line's live check, for verification only (~42 calls per refresh).
  */
-import type { CheckSummary, ErrorBody, LinesBody, LinesSnapshot, Snapshot, StatusBody } from '../shared/api';
+import { checkTabOf, type CheckTab, type ErrorBody, type LinesBody, type LinesSnapshot, type Snapshot, type StatusBody, type TabChecksBody } from '../shared/api';
 import { LIVE } from '../shared/config';
 import type { ReferenceFile } from '../shared/reference/types';
 import { redact } from '../shared/tfl-url';
@@ -12,9 +13,6 @@ import { json } from './http';
 import { buildLinesSnapshot, buildSnapshot } from './refresh';
 import type { Store, Versioned } from './store';
 import type { TflClient } from './tfl/client';
-
-/** A check-all result older than this isn't shown on the home screen. */
-const CHECKS_SHOWN_FOR_MS = 10 * 60_000;
 
 interface Serve<S extends Versioned> {
   store: Store<S>;
@@ -83,8 +81,10 @@ export interface StatusDeps {
 
 export interface LinesDeps extends Omit<StatusDeps, 'store'> {
   store: Store<LinesSnapshot>;
-  /** The check-all snapshot, read (never refreshed) to show recent verdicts on the home screen. */
-  checks: Store<Snapshot> | null;
+}
+
+export interface TabChecksDeps extends StatusDeps {
+  tab: CheckTab;
 }
 
 function respondChecks(snapshot: Snapshot, now: number, stale: boolean): Response {
@@ -92,25 +92,45 @@ function respondChecks(snapshot: Snapshot, now: number, stale: boolean): Respons
   return json(body, { headers: { 'Cache-Control': `public, max-age=${maxAge(snapshot.checkedAt, now)}` } });
 }
 
-export function summarise(snapshot: Snapshot | null, now: number): CheckSummary | null {
-  if (!snapshot || now - snapshot.checkedAt > CHECKS_SHOWN_FOR_MS) return null;
-  return {
+/** Verdicts only: the home screen needs no boards or evidence (those are on the line screen). */
+function respondTabChecks(snapshot: Snapshot, tab: CheckTab, now: number, stale: boolean): Response {
+  const body: TabChecksBody = {
+    tab,
     checkedAt: snapshot.checkedAt,
+    serverNow: now,
+    stale,
     lines: Object.fromEntries(snapshot.lines.map((l) => [l.lineId, { verdict: l.verdict, reason: l.reason, summary: l.summary }])),
   };
+  return json(body, { headers: { 'Cache-Control': stale ? 'no-store' : `public, max-age=${maxAge(snapshot.checkedAt, now)}` } });
+}
+
+/** The reference cut to one home tab's lines: a check of it calls TfL for those lines only. */
+export function tabReference(reference: ReferenceFile, tab: CheckTab): ReferenceFile {
+  return { ...reference, lines: reference.lines.filter((l) => l.mode !== 'bus' && checkTabOf(l.mode) === tab) };
 }
 
 /** What the browser gets: everything but TfL's raw statuses (the line screen's, server side only). */
-function linesBody({ statuses: _, ...snapshot }: LinesSnapshot, now: number, stale: boolean, checks: CheckSummary | null): LinesBody {
-  return { ...snapshot, serverNow: now, stale, checks };
+function linesBody({ statuses: _, ...snapshot }: LinesSnapshot, now: number, stale: boolean): LinesBody {
+  return { ...snapshot, serverNow: now, stale };
 }
 
-async function respondLines(snapshot: LinesSnapshot, deps: LinesDeps, checksRead: Promise<Snapshot | null>, stale: boolean): Promise<Response> {
-  const body = linesBody(snapshot, deps.now, stale, summarise(await checksRead, deps.now));
-  return json(body, { headers: { 'Cache-Control': `public, max-age=${maxAge(snapshot.checkedAt, deps.now)}` } });
+function respondLines(snapshot: LinesSnapshot, now: number, stale: boolean): Response {
+  return json(linesBody(snapshot, now, stale), { headers: { 'Cache-Control': `public, max-age=${maxAge(snapshot.checkedAt, now)}` } });
 }
 
-/** GET /api/checks: every line's live check. Only the "Check all lines" button calls this. */
+/**
+ * GET /api/checks/:tab: the open home tab's live checks (ADR-017). One stored snapshot per tab, refreshed
+ * at most every 30 s whoever is looking; nothing is called while nobody is.
+ */
+export function handleTabChecks(deps: TabChecksDeps): Promise<Response> {
+  const reference = tabReference(deps.reference, deps.tab);
+  return serve<Snapshot>(
+    { store: deps.store, now: deps.now, waitUntil: deps.waitUntil, build: (prev) => buildSnapshot(deps.tfl(), reference, deps.now, prev) },
+    (s, stale) => respondTabChecks(s, deps.tab, deps.now, stale),
+  );
+}
+
+/** GET /api/checks: every line's live check. No screen calls it: for verification by hand. */
 export function handleStatus(deps: StatusDeps): Promise<Response> {
   return serve<Snapshot>(
     { store: deps.store, now: deps.now, waitUntil: deps.waitUntil, build: (prev) => buildSnapshot(deps.tfl(), deps.reference, deps.now, prev) },
@@ -118,14 +138,12 @@ export function handleStatus(deps: StatusDeps): Promise<Response> {
   );
 }
 
-/** GET /api/lines: TfL statuses for the home screen, plus recent check-all verdicts if any. */
+/** GET /api/lines: TfL statuses for the home screen. */
 export function handleLines(deps: LinesDeps): Promise<Response> {
-  // Read alongside the lines snapshot, not after it: one D1 round trip instead of two.
-  const checksRead = deps.checks ? deps.checks.read().then((r) => r.snapshot, () => null) : Promise.resolve(null);
-  return serve<LinesSnapshot>(linesServe(deps), (s, stale) => respondLines(s, deps, checksRead, stale));
+  return serve<LinesSnapshot>(linesServe(deps), (s, stale) => respondLines(s, deps.now, stale));
 }
 
-const linesServe = (deps: Omit<LinesDeps, 'checks'>): Serve<LinesSnapshot> => ({
+const linesServe = (deps: LinesDeps): Serve<LinesSnapshot> => ({
   store: deps.store,
   now: deps.now,
   waitUntil: deps.waitUntil,
@@ -136,7 +154,7 @@ const linesServe = (deps: Omit<LinesDeps, 'checks'>): Serve<LinesSnapshot> => ({
  * The line screen's statuses: the home screen's snapshot, read and refreshed exactly as /api/lines does,
  * so opening a line costs no status call of its own. Null if there is none and TfL can't be reached.
  */
-export async function sharedLineStatuses(deps: Omit<LinesDeps, 'checks'>): Promise<Pick<LinesSnapshot, 'checkedAt' | 'statuses'> | null> {
+export async function sharedLineStatuses(deps: LinesDeps): Promise<Pick<LinesSnapshot, 'checkedAt' | 'statuses'> | null> {
   const got = await obtain(linesServe(deps));
   return got && { checkedAt: got.snapshot.checkedAt, statuses: got.snapshot.statuses };
 }
@@ -175,7 +193,17 @@ export function handleLinesWithoutStore(tfl: () => TflClient, reference: Referen
     'lines',
     now,
     () => buildLinesSnapshot(tfl(), reference, now),
-    (s, stale) => json(linesBody(s, now, stale, null), { headers: { 'Cache-Control': 'no-store' } }),
+    (s, stale) => json(linesBody(s, now, stale), { headers: { 'Cache-Control': 'no-store' } }),
+  );
+}
+
+export function handleTabChecksWithoutStore(tfl: () => TflClient, reference: ReferenceFile, tab: CheckTab, now: number): Promise<Response> {
+  const cut = tabReference(reference, tab);
+  return withoutStore<Snapshot>(
+    `checks:${tab}`,
+    now,
+    (prev) => buildSnapshot(tfl(), cut, now, prev),
+    (s, stale) => respondTabChecks(s, tab, now, stale),
   );
 }
 

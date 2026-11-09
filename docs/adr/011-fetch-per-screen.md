@@ -12,7 +12,7 @@ user request". Bus users had nothing to use.
 |---|---|---|---|
 | Home: status per mode | `/api/lines` | 1–2 | D1 snapshot `lines` (outage fallback) |
 | Line: live check + next trains | `/api/line/:id` | its check stops; status from `lines` ([ADR-015](015-line-status-from-shared-snapshot.md)) | edge 30 s, shared in-flight |
-| Full check (no UI button) | `/api/checks` | ~42 | D1 snapshot `checks`; home shows its verdicts for 10 min |
+| Full check (no UI button) | `/api/checks` | ~42 | D1 snapshot `checks`; home showed its verdicts for 10 min (replaced by [ADR-017](017-home-checks-the-open-tab.md)) |
 | Station or bus stop | `/api/station/:id` | 1–4 | edge 30 s |
 | Bus route: status + next buses at every stop | `/api/bus/:route` | 2 (+2 for stop order, cached a day) | edge 30 s, shared in-flight |
 | Bus stop search | `/api/search?q=` | 1 per new query | edge 1 day |
@@ -31,5 +31,6 @@ saved favourites on the device.
 
 ## Consequences
 - Home cold load ~2 s (was ~6 s); a line ~1.3 s; a bus stop ~0.3 s.
-- The home page only shows mismatches someone checked in the last 10 min.
+- The home page only showed mismatches from a check-all under 10 min old, which no screen ran: in practice
+  never. [ADR-017](017-home-checks-the-open-tab.md) checks the open tab instead.
 - Snapshots and leases are keyed (`lines`, `checks`; migration 0003); costs per refresh unchanged (2 writes).

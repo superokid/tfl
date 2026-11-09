@@ -115,11 +115,13 @@ describe('status in plain words', () => {
 });
 
 describe('live check in plain words', () => {
-  it('rows only mention it when it adds something', () => {
+  it('rows say whether live trains were checked, so TfL\'s status never looks confirmed when it isn\'t', () => {
     expect(rowNote('HIDDEN_DISRUPTION')?.tone).toBe('alert');
     expect(rowNote('MATCH')?.text).toBe('Live trains match');
-    expect(rowNote('CANT_VERIFY')).toBeNull();
-    expect(rowNote(undefined)).toBeNull();
+    expect(rowNote('CANT_VERIFY')).toEqual({ tone: 'muted', text: 'Live trains not checked' });
+    expect(rowNote('unchecked')).toEqual({ tone: 'muted', text: 'Live trains not checked' });
+    expect(rowNote('CLOSED')).toBeNull();
+    expect(rowNote(undefined)).toBeNull(); // still loading
   });
 
   it('line page explains why it could not check, without jargon', () => {

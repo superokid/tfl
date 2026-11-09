@@ -13,6 +13,8 @@ import {
   type LinesBody,
   type NearbyBody,
   type StationBody,
+  type TabChecksBody,
+  isTabChecksBody,
 } from '../../src/shared/api';
 import { BUSES, STATIONS } from '../../src/shared/reference/load';
 
@@ -23,8 +25,14 @@ const lines: LinesBody = {
   serverNow: 1,
   stale: false,
   referenceGeneratedAt: '2026-11-08',
-  checks: null,
   lines: [{ lineId: 'victoria', lineName: 'Victoria', mode: 'tube', tflSays: 'Good Service', severity: 'NORMAL', messages: [], checkable: true, opensAt: null, offHours: false }],
+};
+const tabChecks: TabChecksBody = {
+  tab: 'tube',
+  checkedAt: 1,
+  serverNow: 1,
+  stale: false,
+  lines: { victoria: { verdict: 'MATCH', reason: null, summary: 'Trains at Euston and Brixton are consistent.' } },
 };
 const line: LineBody = {
   lineId: 'victoria',
@@ -74,6 +82,7 @@ function broken<T>(body: T, path: (string | number)[], value: unknown): unknown 
 describe('response validators', () => {
   it('accept good bodies', () => {
     expect(isLinesBody(lines)).toBe(true);
+    expect(isTabChecksBody(tabChecks)).toBe(true);
     expect(isLineBody(line)).toBe(true);
     expect(isStationBody(station)).toBe(true);
     expect(isBusRouteBody(bus)).toBe(true);
@@ -85,7 +94,9 @@ describe('response validators', () => {
 
   it.each([
     ['lines: message not a string', isLinesBody, lines, ['lines', 0, 'messages'], [1]],
-    ['lines: checks not an object', isLinesBody, lines, ['checks'], 'x'],
+    ['tab checks: unknown tab', isTabChecksBody, tabChecks, ['tab'], 'bus'],
+    ['tab checks: unknown verdict', isTabChecksBody, tabChecks, ['lines', 'victoria', 'verdict'], 'FINE'],
+    ['tab checks: summary missing', isTabChecksBody, tabChecks, ['lines', 'victoria', 'summary'], undefined],
     ['line: board without directions', isLineBody, line, ['boards', 0, 'directions'], null],
     ['line: arrival without a time', isLineBody, line, ['boards', 0, 'directions', 0, 'arrivals', 0, 'at'], 'soon'],
     ['line: messages missing', isLineBody, line, ['messages'], undefined],

@@ -133,6 +133,13 @@ export const NEARBY = {
 } as const;
 
 /** How much each screen shows before "More": enough to plan the next trip without scrolling past it. */
+/** Closed outside hours ("Service Closed" at night). */
+export const OPENING = {
+  /** TfL says service resumes "later this morning": a timetable first train further off than this is
+   * a reference-data fault, so no time is shown rather than a wrong one. */
+  thisMorningMaxMs: 12 * 3_600_000,
+};
+
 export const DISPLAY = {
   /** Departures per platform or direction on a station board. */
   boardRows: 3,

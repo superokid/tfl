@@ -24,7 +24,7 @@ const lines: LinesBody = {
   stale: false,
   referenceGeneratedAt: '2026-11-08',
   checks: null,
-  lines: [{ lineId: 'victoria', lineName: 'Victoria', mode: 'tube', tflSays: 'Good Service', severity: 'NORMAL', messages: [], checkable: true }],
+  lines: [{ lineId: 'victoria', lineName: 'Victoria', mode: 'tube', tflSays: 'Good Service', severity: 'NORMAL', messages: [], checkable: true, opensAt: null, offHours: false }],
 };
 const line: LineBody = {
   lineId: 'victoria',
@@ -38,6 +38,8 @@ const line: LineBody = {
   checkedAt: 1,
   messages: [],
   boards: [board],
+  offHours: false,
+  opensAt: null,
   serverNow: 1,
   stale: false,
 };

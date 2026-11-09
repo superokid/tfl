@@ -20,11 +20,14 @@ export interface LineReport extends LineVerdict {
   /** TfL's passenger messages for the current statuses (de-duplicated). */
   messages: string[];
   boards: StationBoard[];
+  /** Closed outside its hours, and when trains are next expected (epoch ms, null if unknown). As LineStatus. */
+  offHours: boolean;
+  opensAt: number | null;
 }
 
 /** Bump when a stored shape changes: a stored snapshot of another version is ignored and refreshed. */
-export const SNAPSHOT_VERSION = 3;
-export const LINES_VERSION = 2;
+export const SNAPSHOT_VERSION = 4;
+export const LINES_VERSION = 3;
 
 /** One line on the home screen: TfL's status only (ADR-011). */
 export interface LineStatus {
@@ -38,6 +41,11 @@ export interface LineStatus {
   messages: string[];
   /** False for lines with no live predictions (Cable Car): never checked. */
   checkable: boolean;
+  /** TfL says closed and the timetable has no service now (night, or a day it doesn't run): when
+   * trains are next expected (epoch ms), from TfL's message or the first timetabled train. Else null. */
+  opensAt: number | null;
+  /** Closed outside hours, but no time known (no timetable, TfL said "later this morning"). */
+  offHours: boolean;
 }
 
 export interface LinesSnapshot {
@@ -208,9 +216,15 @@ const live = (v: Obj) => num(v.checkedAt) && num(v.serverNow) && typeof v.stale 
 
 const VERDICTS: VerdictKind[] = ['HIDDEN_DISRUPTION', 'STALE_ALERT', 'MATCH', 'CANT_VERIFY', 'CLOSED'];
 
+const numOrNull = (v: unknown) => v === null || num(v);
+/** Optional in stored device copies from before the field existed. */
+const optNumOrNull = (v: unknown) => v === undefined || numOrNull(v);
+const optBool = (v: unknown) => v === undefined || typeof v === 'boolean';
+
 const isBoard = (b: unknown) =>
   has(b, str, 'stopId', 'name') &&
   typeof b.live === 'boolean' &&
+  optNumOrNull(b.firstTrainAt) &&
   list(b.directions, (d) => has(d, str, 'key', 'label') && list(d.arrivals, (a) => has(a, num, 'at') && strOrNull(a.destination)));
 
 const isReport = (l: unknown) =>
@@ -219,6 +233,8 @@ const isReport = (l: unknown) =>
   strOrNull(l.reason) &&
   num(l.checkedAt) &&
   strs(l.messages) &&
+  optNumOrNull(l.opensAt) &&
+  optBool(l.offHours) &&
   list(l.boards, isBoard) &&
   list(l.evidence, (e) => has(e, str, 'stationName', 'directionKey', 'directionLabel'));
 
@@ -227,7 +243,7 @@ export function isLinesBody(v: unknown): v is LinesBody {
     obj(v) &&
     live(v) &&
     (v.checks === null || v.checks === undefined || (obj(v.checks) && obj(v.checks.lines))) &&
-    list(v.lines, (l) => has(l, str, 'lineId', 'lineName', 'tflSays', 'mode') && strOrNull(l.severity) && strs(l.messages))
+    list(v.lines, (l) => has(l, str, 'lineId', 'lineName', 'tflSays', 'mode') && strOrNull(l.severity) && strs(l.messages) && optNumOrNull(l.opensAt) && optBool(l.offHours))
   );
 }
 

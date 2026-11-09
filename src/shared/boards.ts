@@ -22,6 +22,8 @@ export interface StationBoard {
   /** False when TfL's arrivals call failed: the UI says so instead of showing an empty board. */
   live: boolean;
   directions: DirectionBoard[];
+  /** Outside timetable hours: the first train here (epoch ms). Absent when running or unknown. */
+  firstTrainAt?: number | null;
 }
 
 const capitalise = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());

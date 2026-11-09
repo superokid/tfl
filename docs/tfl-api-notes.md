@@ -14,6 +14,11 @@ Verified against the live API (fixtures in `test/fixtures/`, re-capture with `bu
   stops**: "no service between Queen's Park and Harrow" lists Queen's Park.
 - Rail severities include "Exit Only", "Bus Service" and "No Service" (all mapped; see SPEC §5.1).
 
+**Overnight** (checked Mon 01:12): every rail line but the Cable Car says "Service Closed", valid from
+~00:50 to 04:07 UTC whatever the line's first train. The reason gives no time ("Service will resume later
+this morning"), except Waterloo & City ("…resume at 06:00"). Elizabeth line still had live predictions at
+Ealing Broadway. Tram stays "Service Closed" while its timetable runs to ~01:30.
+
 **Arrivals** `/Line/{ids}/Arrivals/{stop}`
 - Several lines per call works. 1–17 KB per call.
 - `direction` (inbound/outbound) is often null on sub-surface lines and the Bakerloo (10/21 at Earl's Court).

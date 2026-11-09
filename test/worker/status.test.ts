@@ -222,10 +222,15 @@ describe('D1 unavailable', () => {
 });
 
 describe('snapshot from live fixtures', () => {
-  it('judges every reference line; Waterloo & City is closed, Cable Car status-only', async () => {
+  it('judges every reference line; Waterloo & City is closed (no Sunday service), Cable Car status-only', async () => {
     const s: Snapshot = await buildSnapshot(fakeTfl().client(), RAIL_REFERENCE, NOW, null);
     const byId = new Map(s.lines.map((l) => [l.lineId, l]));
-    expect(byId.get('waterloo-city')).toMatchObject({ verdict: 'CLOSED', reason: 'planned-closure' });
+    expect(byId.get('waterloo-city')).toMatchObject({
+      verdict: 'CLOSED',
+      reason: 'outside-hours',
+      offHours: true,
+      opensAt: Date.UTC(2026, 10, 9, 6, 0), // Monday's first train at Waterloo
+    });
     expect(byId.get('london-cable-car')).toMatchObject({ verdict: 'CANT_VERIFY', reason: 'status-only' });
     expect(byId.get('bakerloo')?.tflSays).toBe('Severe Delays, Part Suspended');
     expect(byId.get('bakerloo')?.messages).toHaveLength(1);

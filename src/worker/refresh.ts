@@ -17,9 +17,10 @@ import {
   type Snapshot,
 } from '../shared/api';
 import { buildBoard, lineMessages } from '../shared/boards';
-import { LIVE } from '../shared/config';
+import { LIVE, OPENING } from '../shared/config';
 import { expandDirection } from '../shared/reference/load';
 import type { LineFile, ReferenceFile } from '../shared/reference/types';
+import { nextFirstTrain, resumeTimeFromMessage, serviceAt } from '../shared/rules/hours';
 import { activeStatuses, mapStatus } from '../shared/rules/status';
 import type { ArrivalsFailure, Expected, LineInput, Prediction, StationArrivals, StatusInput } from '../shared/rules/types';
 import { judgeLine } from '../shared/rules/verdict';
@@ -67,6 +68,25 @@ async function fetchArrivals(tfl: TflClient, reference: ReferenceFile, lines: Li
   return out;
 }
 
+/**
+ * Closed outside its hours (night, or a day it doesn't run), and when it opens: TfL's own time if its
+ * message gives one, else the first timetabled train at the check stations. A daytime closure is neither.
+ */
+function opening(ref: LineFile, severity: Expected | null, messages: string[], now: number): { offHours: boolean; opensAt: number | null } {
+  if (severity !== 'CLOSED') return { offHours: false, opensAt: null };
+  const refs = ref.stations.flatMap((s) => s.directions.map(expandDirection));
+  const timetableClosed = refs.length > 0 && refs.every((r) => serviceAt(r, now).kind === 'outside');
+  // TfL's nightly message; also covers lines with no timetable, and a timetable whose last trams run late.
+  const resumes = messages.some((m) => /\bservice will resume\b/i.test(m));
+  if (!timetableClosed && !resumes) return { offHours: false, opensAt: null };
+  const told = messages.map((m) => resumeTimeFromMessage(m, now)).find((t) => t !== null) ?? null;
+  if (told !== null) return { offHours: true, opensAt: told };
+  const first = timetableClosed ? nextFirstTrain(refs, now) : null;
+  const thisMorning = messages.some((m) => /\blater (?:this morning|today)\b/i.test(m));
+  const plausible = first !== null && !(thisMorning && first - now > OPENING.thisMorningMaxMs);
+  return { offHours: true, opensAt: plausible ? first : null };
+}
+
 /** The rules engine for one line, plus TfL's messages and live boards. */
 function report(ref: LineFile, statuses: StatusInput[], arrivals: ArrivalsByStop, now: number): LineReport {
   const input: LineInput = {
@@ -87,8 +107,11 @@ function report(ref: LineFile, statuses: StatusInput[], arrivals: ArrivalsByStop
   };
   const verdict = judgeLine(input, now);
   const messages = lineMessages(ref.lineName, activeStatuses(statuses, now).map((s) => s.reason));
-  const boards = input.stations.map((s) => buildBoard(s.stopId, s.name, s.arrivals.ok ? s.arrivals.predictions : null, now, 6));
-  return { ...verdict, messages, boards };
+  const boards = input.stations.map((s) => ({
+    ...buildBoard(s.stopId, s.name, s.arrivals.ok ? s.arrivals.predictions : null, now, 6),
+    firstTrainAt: nextFirstTrain(s.directions, now),
+  }));
+  return { ...verdict, messages, boards, ...opening(ref, severityOf(activeStatuses(statuses, now)), messages, now) };
 }
 
 /** Display order, mildest first: a part suspension is worse than severe delays (as TfL's severities). */
@@ -106,14 +129,17 @@ export async function buildLinesSnapshot(tfl: TflClient, reference: ReferenceFil
   const statuses = await fetchStatuses(tfl, `/Line/Mode/${modesOf(reference)}/Status`);
   const lines: LineStatus[] = reference.lines.map((ref) => {
     const active = activeStatuses(statuses.get(ref.lineId) ?? [], now);
+    const severity = severityOf(active);
+    const messages = lineMessages(ref.lineName, active.map((s) => s.reason));
     return {
       lineId: ref.lineId,
       lineName: ref.lineName,
       mode: ref.mode,
       tflSays: [...new Set(active.map((s) => s.description))].join(', '),
-      severity: severityOf(active),
-      messages: lineMessages(ref.lineName, active.map((s) => s.reason)),
+      severity,
+      messages,
       checkable: !ref.statusOnly,
+      ...opening(ref, severity, messages, now),
     };
   });
   const kept = Object.fromEntries(reference.lines.map((ref) => [ref.lineId, statuses.get(ref.lineId) ?? []]));
